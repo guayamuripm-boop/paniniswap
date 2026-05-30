@@ -16,7 +16,7 @@ export default function Home() {
       <div className="text-center text-white px-6">
         <div className="text-8xl mb-6">⚽</div>
         <h1 className="text-6xl font-black mb-4 tracking-tight">
-          PaniniSwap
+          Metaxport
         </h1>
         <p className="text-2xl font-light mb-2 text-blue-200">
           Album Digital del Mundial 2026

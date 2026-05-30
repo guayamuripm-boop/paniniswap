@@ -74,10 +74,10 @@ export default function Intercambios() {
       if (score > 0) {
         // Buscar perfil del otro usuario
         const { data: perfil } = await supabase
-          .from('profiles')
-          .select('full_name, avatar_url, ciudad')
-          .eq('id', otroUserId)
-          .single()
+        .from('profiles')
+        .select('full_name, avatar_url, ciudad, telefono')
+        .eq('id', otroUserId)
+        .single()
 
         // Buscar nombres de las barajitas
         const { data: stickersDame } = await supabase
@@ -90,12 +90,13 @@ export default function Intercambios() {
           .select('numero, jugador, pais')
           .in('id', yoLeDoy.slice(0, 5))
 
-        resultados.push({
-          userId: otroUserId,
-          nombre: perfil?.full_name || 'Usuario',
-          avatar: perfil?.avatar_url,
-          ciudad: perfil?.ciudad,
-          score,
+          resultados.push({
+            userId: otroUserId,
+            nombre: perfil?.full_name || 'Usuario',
+            avatar: perfil?.avatar_url,
+            ciudad: perfil?.ciudad,
+            telefono: perfil?.telefono,
+            score,
           elMeDa: stickersDame || [],
           yoLeDoy: stickersDoy || [],
           totalElMeDa: elMeDa.length,
@@ -126,7 +127,7 @@ export default function Intercambios() {
       <nav className="bg-blue-900 text-white px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <span className="text-2xl">⚽</span>
-          <span className="text-lg font-black">PaniniSwap</span>
+          <span className="text-lg font-black">Metaxport</span>
         </div>
         <div className="flex items-center gap-4">
           <button onClick={() => router.push('/album')}
@@ -250,12 +251,19 @@ export default function Intercambios() {
 
                {/* Botón de contacto */}
                 
-              <a href={`https://wa.me/?text=Hola! Te escribo desde PaniniSwap. Podemos intercambiar ${match.score} barajitas del album Mundial 2026. Yo te doy las que necesitas y tú me das las que me faltan. Entra a https://paniniswap-6hlt.vercel.app para verlo!`}
+               {match.telefono ? (
+                  
+                 <a href={`https://wa.me/${match.telefono}?text=Hola%20${encodeURIComponent(match.nombre.split(' ')[0])}!%20Te%20escribo%20desde%20MetaXport.%20Podemos%20intercambiar%20${match.score}%20figuritas%20del%20album%20Mundial%202026.%20Yo%20te%20doy%20las%20que%20necesitas%20y%20t%C3%BA%20me%20das%20las%20que%20me%20faltan!%20%F0%9F%8F%86`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-center block transition-colors">
                   💬 Contactar por WhatsApp
                 </a>
+              ) : (
+                <div className="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-xl text-center text-sm">
+                  📵 Este usuario no agregó su WhatsApp aún
+                </div>
+              )}
               </div>
             ))}
           </div>

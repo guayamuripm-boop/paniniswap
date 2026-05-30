@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 
 export default function Perfil() {
   const [user, setUser]       = useState(null)
-  const [perfil, setPerfil]   = useState({ full_name: '', ciudad: '' })
+  const [perfil, setPerfil]   = useState({ full_name: '', ciudad: '', telefono: '' })
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [stats, setStats]     = useState({ tengo: 0, repito: 0, mefaltan: 0 })
@@ -30,10 +30,11 @@ export default function Perfil() {
       .single()
 
     if (data) {
-      setPerfil({
-        full_name: data.full_name || user.user_metadata?.full_name || '',
-        ciudad: data.ciudad || ''
-      })
+        setPerfil({
+            full_name: data.full_name || user.user_metadata?.full_name || '',
+            ciudad: data.ciudad || '',
+            telefono: data.telefono || ''
+          })
     }
   }
 
@@ -52,7 +53,7 @@ export default function Perfil() {
     setMensaje('')
     const { error } = await supabase
       .from('profiles')
-      .update({ full_name: perfil.full_name, ciudad: perfil.ciudad })
+      .update({ full_name: perfil.full_name, ciudad: perfil.ciudad, telefono: perfil.telefono })
       .eq('id', user.id)
 
     if (error) {
@@ -80,7 +81,7 @@ export default function Perfil() {
       <nav className="bg-blue-900 text-white px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <span className="text-2xl">⚽</span>
-          <span className="text-lg font-black">PaniniSwap</span>
+          <span className="text-lg font-black">Metaxport</span>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/album')}
@@ -161,6 +162,26 @@ export default function Perfil() {
             <p className="text-gray-400 text-xs mt-1">
               Tu ciudad aparece en los matches para facilitar intercambios presenciales
             </p>
+            <div className="mb-6">
+            <label className="text-sm font-bold text-gray-600 block mb-1">
+              WhatsApp 📱
+            </label>
+            <div className="flex">
+              <span className="bg-gray-100 border border-r-0 border-gray-200 rounded-l-xl px-3 flex items-center text-gray-500 text-sm">
+                +
+              </span>
+              <input
+                type="tel"
+                value={perfil.telefono}
+                onChange={e => setPerfil(p => ({ ...p, telefono: e.target.value.replace(/\D/g, '') }))}
+                className="flex-1 border border-gray-200 rounded-r-xl px-4 py-3 text-gray-800 focus:outline-none focus:border-blue-400 transition-colors"
+                placeholder="584121234567 (sin + ni espacios)"
+              />
+            </div>
+            <p className="text-gray-400 text-xs mt-1">
+              Código de país + número. Ej Venezuela: 584121234567
+            </p>
+          </div>
           </div>
 
           {mensaje && (
