@@ -127,12 +127,16 @@ export default function Album() {
       <nav className="bg-blue-900 text-white px-6 py-4 flex justify-between items-center shadow-lg sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <span className="text-2xl">⚽</span>
-          <span className="text-lg font-black">PaniniSwap</span>
+          <span className="text-lg font-black">MetaXport</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-blue-200 text-sm hidden md:block">
             {user?.user_metadata?.full_name}
           </span>
+          <button onClick={() => router.push('/intercambios')}
+  className="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm transition-colors font-bold">
+  🔄 Intercambios
+</button>
           <button onClick={handleLogout}
             className="bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-lg text-sm transition-colors">
             Salir
