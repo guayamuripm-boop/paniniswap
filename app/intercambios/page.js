@@ -7,6 +7,7 @@ export default function Intercambios() {
   const [user, setUser]       = useState(null)
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filtroCiudad, setFiltroCiudad] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -144,7 +145,22 @@ export default function Intercambios() {
         <p className="text-gray-500 mb-8">
           Personas con las que puedes intercambiar barajitas ahora mismo
         </p>
-
+           {/* Filtro por ciudad */}
+        <div className="mb-6 flex gap-2">
+          <input
+            type="text"
+            value={filtroCiudad}
+            onChange={e => setFiltroCiudad(e.target.value)}
+            placeholder="🔍 Filtrar por ciudad..."
+            className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-400"
+          />
+          {filtroCiudad && (
+            <button onClick={() => setFiltroCiudad('')}
+              className="px-4 py-2 bg-gray-100 rounded-xl text-sm text-gray-500 hover:bg-gray-200">
+              Limpiar
+            </button>
+          )}
+        </div>
         {matches.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🔍</div>
@@ -159,7 +175,9 @@ export default function Intercambios() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {matches.map((match, i) => (
+            {matches
+              .filter(m => !filtroCiudad || m.ciudad?.toLowerCase().includes(filtroCiudad.toLowerCase()))
+              .map((match, i) => (
               <div key={match.userId}
                 className="bg-white rounded-2xl shadow p-6 border border-gray-100">
 

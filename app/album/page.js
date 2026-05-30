@@ -133,6 +133,10 @@ export default function Album() {
           <span className="text-blue-200 text-sm hidden md:block">
             {user?.user_metadata?.full_name}
           </span>
+          <button onClick={() => router.push('/perfil')}
+            className="bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-lg text-sm transition-colors">
+            👤 Perfil
+          </button>
           <button onClick={() => router.push('/intercambios')}
             className="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm transition-colors font-bold">
             🔄 Intercambios
