@@ -230,9 +230,9 @@ export default function Intercambios() {
                   </div>
                 )}
 
-                {/* Botón de contacto */}
+               {/* Botón de contacto */}
                 
-                  href={`https://wa.me/?text=Hola! Te escribo desde PaniniSwap. Podemos intercambiar ${match.score} barajitas del album Mundial 2026. Yo te doy las que necesitas y tú me das las que me faltan. Entra a https://paniniswap-6hlt.vercel.app para verlo!`}
+              <a href={`https://wa.me/?text=Hola! Te escribo desde PaniniSwap. Podemos intercambiar ${match.score} barajitas del album Mundial 2026. Yo te doy las que necesitas y tú me das las que me faltan. Entra a https://paniniswap-6hlt.vercel.app para verlo!`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-center block transition-colors">
