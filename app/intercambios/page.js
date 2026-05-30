@@ -4,235 +4,188 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function Intercambios() {
-  const [user, setUser] = useState(null)
-  const [matches, setMatches] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filtroCiudad, setFiltroCiudad] = useState('')
-  const router = useRouter()
+  const [user,setUser]=useState(null)
+  const [matches,setMatches]=useState([])
+  const [loading,setLoading]=useState(true)
+  const [filtro,setFiltro]=useState('')
+  const router=useRouter()
 
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { router.push('/'); return }
+  useEffect(()=>{
+    supabase.auth.getSession().then(async({data:{session}})=>{
+      if(!session){router.push('/');return}
       setUser(session.user)
-      await calcularMatches(session.user.id)
+      await calcular(session.user.id)
       setLoading(false)
     })
-  }, [])
+  },[])
 
-  const calcularMatches = async (userId) => {
-    const { data: misStickers } = await supabase
-      .from('user_stickers').select('sticker_id, quantity').eq('user_id', userId)
-    if (!misStickers || misStickers.length === 0) return
-
-    const tengo = misStickers.filter(s => s.quantity >= 1).map(s => s.sticker_id)
-    const repito = misStickers.filter(s => s.quantity >= 2).map(s => s.sticker_id)
-
-    const { data: todosStickers } = await supabase.from('stickers').select('id')
-    const todosIds = todosStickers.map(s => s.id)
-    const faltanIds = todosIds.filter(id => !tengo.includes(id))
-
-    if (repito.length === 0 && faltanIds.length === 0) return
-
-    const { data: otrosUsers } = await supabase
-      .from('user_stickers').select('user_id, sticker_id, quantity').neq('user_id', userId)
-    if (!otrosUsers || otrosUsers.length === 0) return
-
-    const porUsuario = {}
-    otrosUsers.forEach(s => {
-      if (!porUsuario[s.user_id]) porUsuario[s.user_id] = []
-      porUsuario[s.user_id].push(s)
-    })
-
-    const resultados = []
-    for (const [otroUserId, susStickers] of Object.entries(porUsuario)) {
-      const elTiene = susStickers.filter(s => s.quantity >= 1).map(s => s.sticker_id)
-      const elRepite = susStickers.filter(s => s.quantity >= 2).map(s => s.sticker_id)
-      const elFaltan = todosIds.filter(id => !elTiene.includes(id))
-
-      const elMeDa = elRepite.filter(id => faltanIds.includes(id))
-      const yoLeDoy = repito.filter(id => elFaltan.includes(id))
-      const score = elMeDa.length + yoLeDoy.length
-
-      if (score > 0) {
-        const { data: perfil } = await supabase
-          .from('profiles').select('full_name, avatar_url, ciudad, telefono')
-          .eq('id', otroUserId).single()
-
-        const { data: stickersDame } = await supabase
-          .from('stickers').select('numero, jugador, pais')
-          .in('id', elMeDa.slice(0, 6))
-
-        const { data: stickersDoy } = await supabase
-          .from('stickers').select('numero, jugador, pais')
-          .in('id', yoLeDoy.slice(0, 6))
-
-        resultados.push({
-          userId: otroUserId,
-          nombre: perfil?.full_name || 'Usuario',
-          avatar: perfil?.avatar_url,
-          ciudad: perfil?.ciudad,
-          telefono: perfil?.telefono,
-          score,
-          elMeDa: stickersDame || [],
-          yoLeDoy: stickersDoy || [],
-          totalElMeDa: elMeDa.length,
-          totalYoLeDoy: yoLeDoy.length,
-        })
+  const calcular=async(uid)=>{
+    const{data:mis}=await supabase.from('user_stickers').select('sticker_id,quantity').eq('user_id',uid)
+    if(!mis||mis.length===0)return
+    const tengo=mis.filter(s=>s.quantity>=1).map(s=>s.sticker_id)
+    const repito=mis.filter(s=>s.quantity>=2).map(s=>s.sticker_id)
+    const{data:todos}=await supabase.from('stickers').select('id')
+    const todosIds=todos.map(s=>s.id)
+    const faltan=todosIds.filter(id=>!tengo.includes(id))
+    if(repito.length===0&&faltan.length===0)return
+    const{data:otros}=await supabase.from('user_stickers').select('user_id,sticker_id,quantity').neq('user_id',uid)
+    if(!otros||otros.length===0)return
+    const porUser={}
+    otros.forEach(s=>{if(!porUser[s.user_id])porUser[s.user_id]=[];porUser[s.user_id].push(s)})
+    const res=[]
+    for(const[oId,sus]of Object.entries(porUser)){
+      const elTiene=sus.filter(s=>s.quantity>=1).map(s=>s.sticker_id)
+      const elRep=sus.filter(s=>s.quantity>=2).map(s=>s.sticker_id)
+      const elFal=todosIds.filter(id=>!elTiene.includes(id))
+      const dame=elRep.filter(id=>faltan.includes(id))
+      const doy=repito.filter(id=>elFal.includes(id))
+      const score=dame.length+doy.length
+      if(score>0){
+        const{data:p}=await supabase.from('profiles').select('full_name,avatar_url,ciudad,telefono').eq('id',oId).single()
+        const{data:sd}=await supabase.from('stickers').select('jugador').in('id',dame.slice(0,5))
+        const{data:sg}=await supabase.from('stickers').select('jugador').in('id',doy.slice(0,5))
+        res.push({userId:oId,nombre:p?.full_name||'Usuario',avatar:p?.avatar_url,ciudad:p?.ciudad,telefono:p?.telefono,score,dame:sd||[],doy:sg||[],totalDame:dame.length,totalDoy:doy.length})
       }
     }
-
-    resultados.sort((a, b) => b.score - a.score)
-    setMatches(resultados)
+    res.sort((a,b)=>b.score-a.score)
+    setMatches(res)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
+  const filtrados=matches.filter(m=>!filtro||m.ciudad?.toLowerCase().includes(filtro.toLowerCase()))
 
-  const matchesFiltrados = matches.filter(m =>
-    !filtroCiudad || m.ciudad?.toLowerCase().includes(filtroCiudad.toLowerCase())
-  )
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{background:'var(--dark)'}}>
-      <div className="text-center">
-        <div className="font-display text-4xl font-black mb-2" style={{color:'var(--gold)'}}>METAXPORT</div>
-        <div className="text-sm animate-pulse" style={{color:'var(--text-dim)'}}>Buscando tus matches...</div>
+  if(loading) return(
+    <div style={{minHeight:'100vh',background:'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{fontFamily:'Syne',fontSize:28,fontWeight:800,background:'linear-gradient(135deg,#E8363D,#F5C518)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>MetaXport</div>
+        <div style={{color:'var(--text2)',fontSize:13,marginTop:8}}>Buscando matches...</div>
       </div>
     </div>
   )
 
-  return (
-    <main className="min-h-screen" style={{background:'var(--dark)'}}>
-      <nav className="navbar sticky top-0 z-50 px-4 py-3 flex items-center justify-between">
-        <span className="font-display text-xl font-black tracking-wider" style={{color:'var(--gold)'}}>
-          META<span style={{color:'var(--text)'}}>XPORT</span>
+  return(
+    <main style={{minHeight:'100vh',background:'var(--bg)'}}>
+      <nav className="navbar" style={{position:'sticky',top:0,zIndex:50,padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{fontFamily:'Syne',fontSize:18,fontWeight:800}}>
+          <span style={{background:'linear-gradient(135deg,#E8363D,#F47B20)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Meta</span>
+          <span style={{color:'white'}}>Xport</span>
         </span>
-        <div className="flex gap-2">
-          <button onClick={() => router.push('/album')} className="btn-ghost px-3 py-2 text-xs">📒 Mi Álbum</button>
-          <button onClick={() => router.push('/perfil')} className="btn-ghost px-3 py-2 text-xs">👤 Perfil</button>
-          <button onClick={handleLogout} className="btn-ghost px-3 py-2 text-xs">Salir</button>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-ghost" style={{padding:'7px 14px'}} onClick={()=>router.push('/album')}>📒 Álbum</button>
+          <button className="btn btn-ghost" style={{padding:'7px 14px'}} onClick={()=>router.push('/perfil')}>👤 Perfil</button>
         </div>
       </nav>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div style={{maxWidth:600,margin:'0 auto',padding:'24px 16px'}}>
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-display text-4xl font-black tracking-tight mb-1" style={{color:'var(--text)'}}>
-            MIS <span style={{color:'var(--gold)'}}>INTERCAMBIOS</span>
+        <div style={{marginBottom:24}} className="anim-up">
+          <h1 style={{fontFamily:'Syne',fontSize:28,fontWeight:800,marginBottom:4}}>
+            Mis <span style={{background:'linear-gradient(135deg,#E8363D,#F47B20)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Intercambios</span>
           </h1>
-          <p style={{color:'var(--text-dim)'}}>
-            {matches.length > 0 ? `${matches.length} match${matches.length > 1 ? 'es' : ''} encontrado${matches.length > 1 ? 's' : ''}` : 'Marca figuritas para encontrar matches'}
+          <p style={{color:'var(--text2)',fontSize:14}}>
+            {matches.length>0?`${matches.length} match${matches.length>1?'es':''} encontrado${matches.length>1?'s':''}`:'Marca figuritas para encontrar matches'}
           </p>
         </div>
 
-        {/* Filtro */}
-        <div className="mb-6 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{color:'var(--text-dim)'}}>🔍</span>
-          <input type="text" value={filtroCiudad}
-            onChange={e => setFiltroCiudad(e.target.value)}
-            placeholder="Filtrar por ciudad..."
-            className="w-full pl-9 pr-4 py-3 rounded-lg text-sm outline-none"
-            style={{
-              background:'var(--dark-3)',
-              border:'1px solid rgba(255,255,255,0.08)',
-              color:'var(--text)',
-            }} />
+        {/* Filtro ciudad */}
+        <div style={{position:'relative',marginBottom:20}}>
+          <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:14}}>🔍</span>
+          <input className="input-field" style={{paddingLeft:38}} placeholder="Filtrar por ciudad..."
+            value={filtro} onChange={e=>setFiltro(e.target.value)} />
         </div>
 
-        {matchesFiltrados.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4">🔍</div>
-            <p className="font-display text-xl" style={{color:'var(--text-dim)'}}>No hay matches aún</p>
-            <p className="text-sm mt-2 mb-6" style={{color:'var(--text-dim)'}}>Marca más figuritas y asegúrate de tener repetidas</p>
-            <button onClick={() => router.push('/album')} className="btn-primary px-6 py-3">
+        {filtrados.length===0?(
+          <div style={{textAlign:'center',padding:'60px 20px'}}>
+            <div style={{fontSize:48,marginBottom:16}}>🔍</div>
+            <p style={{fontFamily:'Syne',fontSize:18,fontWeight:700,color:'var(--text2)',marginBottom:8}}>Sin matches aún</p>
+            <p style={{color:'var(--text3)',fontSize:14,marginBottom:24}}>Marca más figuritas y agrega algunas como repetidas</p>
+            <button className="btn btn-primary" style={{padding:'12px 24px',fontSize:14}} onClick={()=>router.push('/album')}>
               Ir a mi Álbum
             </button>
           </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {matchesFiltrados.map((match) => (
-              <div key={match.userId} className="card p-5 animate-fade-up">
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {filtrados.map((m,i)=>(
+              <div key={m.userId} className="match-card anim-up" style={{animationDelay:`${i*0.05}s`}}>
 
-                {/* Header del match */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    {match.avatar ? (
-                      <img src={match.avatar} className="w-11 h-11 rounded-full ring-2"
-                        style={{ringColor:'var(--gold)'}} alt="" />
-                    ) : (
-                      <div className="w-11 h-11 rounded-full flex items-center justify-center font-display font-black text-lg"
-                        style={{background:'var(--dark-4)', color:'var(--gold)', border:'1px solid rgba(245,197,24,0.3)'}}>
-                        {match.nombre[0]}
-                      </div>
+                {/* Header */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+                  <div style={{display:'flex',alignItems:'center',gap:12}}>
+                    {m.avatar?(
+                      <img src={m.avatar} style={{width:44,height:44,borderRadius:'50%',border:'2px solid rgba(255,255,255,0.1)'}} alt=""/>
+                    ):(
+                      <div style={{
+                        width:44,height:44,borderRadius:'50%',
+                        background:'linear-gradient(135deg,#E8363D,#F47B20)',
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                        fontFamily:'Syne',fontWeight:800,fontSize:18,color:'white'
+                      }}>{m.nombre[0]}</div>
                     )}
                     <div>
-                      <p className="font-display font-bold tracking-wide" style={{color:'var(--text)'}}>{match.nombre}</p>
-                      {match.ciudad && (
-                        <p className="text-xs" style={{color:'var(--text-dim)'}}>📍 {match.ciudad}</p>
-                      )}
+                      <div style={{fontWeight:700,fontSize:15,color:'white'}}>{m.nombre}</div>
+                      {m.ciudad&&<div style={{fontSize:12,color:'var(--text2)',marginTop:1}}>📍 {m.ciudad}</div>}
                     </div>
                   </div>
-                  <div className="text-center px-4 py-2 rounded-lg"
-                    style={{background:'rgba(245,197,24,0.1)', border:'1px solid rgba(245,197,24,0.3)'}}>
-                    <div className="font-display text-2xl font-black" style={{color:'var(--gold)'}}>{match.score}</div>
-                    <div className="text-xs" style={{color:'var(--text-dim)'}}>figuritas</div>
+                  <div style={{
+                    padding:'8px 14px',borderRadius:12,textAlign:'center',
+                    background:'rgba(245,197,24,0.1)',border:'1px solid rgba(245,197,24,0.2)'
+                  }}>
+                    <div style={{fontFamily:'Syne',fontSize:22,fontWeight:800,color:'#F5C518',lineHeight:1}}>{m.score}</div>
+                    <div style={{fontSize:9,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:1}}>figuritas</div>
                   </div>
                 </div>
 
-                {/* Lo que te da */}
-                {match.elMeDa.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs font-bold mb-2 uppercase tracking-wider" style={{color:'var(--green)'}}>
-                      ✅ Te puede dar ({match.totalElMeDa})
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {match.elMeDa.map(s => (
-                        <span key={s.jugador} className="text-xs px-2 py-1 rounded"
-                          style={{background:'rgba(0,255,136,0.08)', border:'1px solid rgba(0,255,136,0.2)', color:'var(--green)'}}>
-                          {s.jugador}
-                        </span>
+                {/* Figuritas que te da */}
+                {m.dame.length>0&&(
+                  <div style={{marginBottom:10}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#3BB273',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:6}}>
+                      ✅ Te puede dar ({m.totalDame})
+                    </div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                      {m.dame.map(s=>(
+                        <span key={s.jugador} className="badge badge-green">{s.jugador}</span>
                       ))}
-                      {match.totalElMeDa > 6 && (
-                        <span className="text-xs px-2 py-1" style={{color:'var(--text-dim)'}}>+{match.totalElMeDa - 6} más</span>
-                      )}
+                      {m.totalDame>5&&<span style={{fontSize:11,color:'var(--text3)',alignSelf:'center'}}>+{m.totalDame-5} más</span>}
                     </div>
                   </div>
                 )}
 
-                {/* Lo que le das */}
-                {match.yoLeDoy.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-xs font-bold mb-2 uppercase tracking-wider" style={{color:'var(--cyan)'}}>
-                      🔄 Tú le das ({match.totalYoLeDoy})
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {match.yoLeDoy.map(s => (
-                        <span key={s.jugador} className="text-xs px-2 py-1 rounded"
-                          style={{background:'rgba(0,212,255,0.08)', border:'1px solid rgba(0,212,255,0.2)', color:'var(--cyan)'}}>
-                          {s.jugador}
-                        </span>
+                {/* Figuritas que le das */}
+                {m.doy.length>0&&(
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#00B4D8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:6}}>
+                      🔄 Tú le das ({m.totalDoy})
+                    </div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                      {m.doy.map(s=>(
+                        <span key={s.jugador} className="badge badge-teal">{s.jugador}</span>
                       ))}
-                      {match.totalYoLeDoy > 6 && (
-                        <span className="text-xs px-2 py-1" style={{color:'var(--text-dim)'}}>+{match.totalYoLeDoy - 6} más</span>
-                      )}
+                      {m.totalDoy>5&&<span style={{fontSize:11,color:'var(--text3)',alignSelf:'center'}}>+{m.totalDoy-5} más</span>}
                     </div>
                   </div>
                 )}
 
-                {/* Botón WhatsApp */}
-                {match.telefono ? (
-                  <a href={`https://wa.me/${match.telefono}?text=Hola%20${encodeURIComponent(match.nombre.split(' ')[0])}!%20Te%20escribo%20desde%20MetaXport.%20Podemos%20intercambiar%20${match.score}%20figuritas%20del%20Mundial%202026!%20%F0%9F%8F%86`}
+                {/* WhatsApp */}
+                {m.telefono?(
+                  <a href={`https://wa.me/${m.telefono}?text=Hola%20${encodeURIComponent(m.nombre.split(' ')[0])}!%20Te%20escribo%20desde%20MetaXport.%20Podemos%20intercambiar%20${m.score}%20figuritas%20del%20Mundial%202026!%20%F0%9F%8F%86`}
                     target="_blank" rel="noopener noreferrer"
-                    className="w-full py-3 rounded-lg text-center font-display font-bold tracking-wide text-sm block transition-all hover:opacity-90"
-                    style={{background:'linear-gradient(135deg, #25D366, #128C7E)', color:'white'}}>
+                    style={{
+                      display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+                      width:'100%',padding:'11px',borderRadius:12,
+                      background:'linear-gradient(135deg,#25D366,#128C7E)',
+                      color:'white',fontWeight:700,fontSize:14,textDecoration:'none',
+                      transition:'opacity 0.2s'
+                    }}
+                    onMouseOver={e=>e.currentTarget.style.opacity='0.9'}
+                    onMouseOut={e=>e.currentTarget.style.opacity='1'}>
                     💬 Contactar por WhatsApp
                   </a>
-                ) : (
-                  <div className="w-full py-3 rounded-lg text-center text-sm"
-                    style={{background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', color:'var(--text-dim)'}}>
+                ):(
+                  <div style={{
+                    padding:'11px',borderRadius:12,textAlign:'center',fontSize:13,
+                    background:'rgba(255,255,255,0.03)',color:'var(--text3)',
+                    border:'1px solid rgba(255,255,255,0.06)'
+                  }}>
                     📵 Sin WhatsApp registrado
                   </div>
                 )}

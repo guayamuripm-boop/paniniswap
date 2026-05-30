@@ -4,293 +4,223 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 
 const GRUPOS = {
-  'A': ['MEX','RSA','KOR','CZE'],
-  'B': ['CAN','BIH','QAT','SUI'],
-  'C': ['BRA','MAR','HAI','SCO'],
-  'D': ['USA','PAR','AUS','TUR'],
-  'E': ['GER','CUW','CIV','ECU'],
-  'F': ['NED','JPN','SWE','TUN'],
-  'G': ['BEL','EGY','IRN','NZL'],
-  'H': ['ESP','CPV','KSA','URU'],
-  'I': ['FRA','SEN','IRQ','NOR'],
-  'J': ['ARG','ALG','AUT','JOR'],
-  'K': ['POR','COD','UZB','COL'],
-  'L': ['ENG','CRO','GHA','PAN'],
+  A:['MEX','RSA','KOR','CZE'], B:['CAN','BIH','QAT','SUI'],
+  C:['BRA','MAR','HAI','SCO'], D:['USA','PAR','AUS','TUR'],
+  E:['GER','CUW','CIV','ECU'], F:['NED','JPN','SWE','TUN'],
+  G:['BEL','EGY','IRN','NZL'], H:['ESP','CPV','KSA','URU'],
+  I:['FRA','SEN','IRQ','NOR'], J:['ARG','ALG','AUT','JOR'],
+  K:['POR','COD','UZB','COL'], L:['ENG','CRO','GHA','PAN'],
 }
-
 const PAISES = {
-  MEX:'México', RSA:'Sudáfrica', KOR:'Corea del Sur', CZE:'Rep. Checa',
-  CAN:'Canadá', BIH:'Bosnia', QAT:'Qatar', SUI:'Suiza',
-  BRA:'Brasil', MAR:'Marruecos', HAI:'Haití', SCO:'Escocia',
-  USA:'USA', PAR:'Paraguay', AUS:'Australia', TUR:'Turquía',
-  GER:'Alemania', CUW:'Curazao', CIV:'Costa de Marfil', ECU:'Ecuador',
-  NED:'Holanda', JPN:'Japón', SWE:'Suecia', TUN:'Túnez',
-  BEL:'Bélgica', EGY:'Egipto', IRN:'Irán', NZL:'Nueva Zelanda',
-  ESP:'España', CPV:'Cabo Verde', KSA:'Arabia Saudita', URU:'Uruguay',
-  FRA:'Francia', SEN:'Senegal', IRQ:'Irak', NOR:'Noruega',
-  ARG:'Argentina', ALG:'Argelia', AUT:'Austria', JOR:'Jordania',
-  POR:'Portugal', COD:'Congo DR', UZB:'Uzbekistán', COL:'Colombia',
-  ENG:'Inglaterra', CRO:'Croacia', GHA:'Ghana', PAN:'Panamá',
-  FWC:'FIFA WC', CC:'Coca-Cola',
+  MEX:'🇲🇽 México',RSA:'🇿🇦 Sudáfrica',KOR:'🇰🇷 Corea del Sur',CZE:'🇨🇿 Rep. Checa',
+  CAN:'🇨🇦 Canadá',BIH:'🇧🇦 Bosnia',QAT:'🇶🇦 Qatar',SUI:'🇨🇭 Suiza',
+  BRA:'🇧🇷 Brasil',MAR:'🇲🇦 Marruecos',HAI:'🇭🇹 Haití',SCO:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Escocia',
+  USA:'🇺🇸 USA',PAR:'🇵🇾 Paraguay',AUS:'🇦🇺 Australia',TUR:'🇹🇷 Turquía',
+  GER:'🇩🇪 Alemania',CUW:'🇨🇼 Curazao',CIV:'🇨🇮 Costa de Marfil',ECU:'🇪🇨 Ecuador',
+  NED:'🇳🇱 Holanda',JPN:'🇯🇵 Japón',SWE:'🇸🇪 Suecia',TUN:'🇹🇳 Túnez',
+  BEL:'🇧🇪 Bélgica',EGY:'🇪🇬 Egipto',IRN:'🇮🇷 Irán',NZL:'🇳🇿 Nueva Zelanda',
+  ESP:'🇪🇸 España',CPV:'🇨🇻 Cabo Verde',KSA:'🇸🇦 Arabia Saudita',URU:'🇺🇾 Uruguay',
+  FRA:'🇫🇷 Francia',SEN:'🇸🇳 Senegal',IRQ:'🇮🇶 Irak',NOR:'🇳🇴 Noruega',
+  ARG:'🇦🇷 Argentina',ALG:'🇩🇿 Argelia',AUT:'🇦🇹 Austria',JOR:'🇯🇴 Jordania',
+  POR:'🇵🇹 Portugal',COD:'🇨🇩 Congo DR',UZB:'🇺🇿 Uzbekistán',COL:'🇨🇴 Colombia',
+  ENG:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra',CRO:'🇭🇷 Croacia',GHA:'🇬🇭 Ghana',PAN:'🇵🇦 Panamá',
+  FWC:'🏆 FIFA WC',CC:'🥤 Coca-Cola',
 }
-
-const COLORES_GRUPO = {
-  A:'#F5C518', B:'#00D4FF', C:'#00FF88', D:'#FF3B5C',
-  E:'#A855F7', F:'#FB923C', G:'#06B6D4', H:'#EC4899',
-  I:'#84CC16', J:'#F97316', K:'#6366F1', L:'#14B8A6',
-}
-
-function getGrupoDeSeccion(seccion) {
-  for (const [grupo, secciones] of Object.entries(GRUPOS)) {
-    if (secciones.includes(seccion)) return grupo
-  }
-  return null
+const COLORES = {
+  A:'#E8363D',B:'#F47B20',C:'#3BB273',D:'#00B4D8',
+  E:'#7B2FBE',F:'#F5C518',G:'#4361EE',H:'#EC407A',
+  I:'#00897B',J:'#FF7043',K:'#5C6BC0',L:'#26A69A',
+  FWC:'#F5C518',CC:'#E8363D',
 }
 
 export default function Album() {
-  const [user, setUser] = useState(null)
-  const [stickers, setStickers] = useState([])
-  const [misStickers, setMisStickers] = useState({})
-  const [grupoActivo, setGrupoActivo] = useState('A')
-  const [seccionActiva, setSeccionActiva] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [user,setUser]=useState(null)
+  const [stickers,setStickers]=useState([])
+  const [mis,setMis]=useState({})
+  const [grupo,setGrupo]=useState('A')
+  const [seccion,setSeccion]=useState(null)
+  const [loading,setLoading]=useState(true)
+  const router=useRouter()
 
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { router.push('/'); return }
+  useEffect(()=>{
+    supabase.auth.getSession().then(async({data:{session}})=>{
+      if(!session){router.push('/');return}
       setUser(session.user)
       await asegurarPerfil(session.user)
-      await cargarStickers(session.user.id)
+      await cargar(session.user.id)
       setLoading(false)
     })
-  }, [])
+  },[])
 
-  const asegurarPerfil = async (user) => {
-    const { data } = await supabase.from('profiles').select('id').eq('id', user.id).single()
-    if (!data) {
-      await supabase.from('profiles').insert({
-        id: user.id,
-        full_name: user.user_metadata?.full_name,
-        avatar_url: user.user_metadata?.avatar_url,
-      })
-    }
+  const asegurarPerfil=async(u)=>{
+    const{data}=await supabase.from('profiles').select('id').eq('id',u.id).single()
+    if(!data)await supabase.from('profiles').insert({id:u.id,full_name:u.user_metadata?.full_name,avatar_url:u.user_metadata?.avatar_url})
   }
 
-  const cargarStickers = async (userId) => {
-    const { data: todos } = await supabase.from('stickers').select('*').order('numero')
-    const { data: mios } = await supabase.from('user_stickers').select('*').eq('user_id', userId)
-    const mapa = {}
-    if (mios) mios.forEach(s => { mapa[s.sticker_id] = s })
-    setStickers(todos || [])
-    setMisStickers(mapa)
+  const cargar=async(uid)=>{
+    const{data:todos}=await supabase.from('stickers').select('*').order('numero')
+    const{data:mios}=await supabase.from('user_stickers').select('*').eq('user_id',uid)
+    const m={}
+    if(mios)mios.forEach(s=>{m[s.sticker_id]=s})
+    setStickers(todos||[])
+    setMis(m)
   }
 
-  const toggleSticker = async (sticker) => {
-    const userId = user.id
-    const actual = misStickers[sticker.id]
-    if (!actual) {
-      const { data } = await supabase.from('user_stickers')
-        .insert({ user_id: userId, sticker_id: sticker.id, quantity: 1, wanted: false })
-        .select().single()
-      setMisStickers(prev => ({ ...prev, [sticker.id]: data }))
-    } else if (actual.quantity === 1) {
-      const { data } = await supabase.from('user_stickers')
-        .update({ quantity: 2 }).eq('id', actual.id).select().single()
-      setMisStickers(prev => ({ ...prev, [sticker.id]: data }))
+  const toggle=async(s)=>{
+    const uid=user.id
+    const act=mis[s.id]
+    if(!act){
+      const{data}=await supabase.from('user_stickers').insert({user_id:uid,sticker_id:s.id,quantity:1,wanted:false}).select().single()
+      setMis(p=>({...p,[s.id]:data}))
+    } else if(act.quantity===1){
+      const{data}=await supabase.from('user_stickers').update({quantity:2}).eq('id',act.id).select().single()
+      setMis(p=>({...p,[s.id]:data}))
     } else {
-      await supabase.from('user_stickers').delete().eq('id', actual.id)
-      setMisStickers(prev => { const n = { ...prev }; delete n[sticker.id]; return n })
+      await supabase.from('user_stickers').delete().eq('id',act.id)
+      setMis(p=>{const n={...p};delete n[s.id];return n})
     }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
+  const secciones=GRUPOS[grupo]||[]
+  const secActiva=seccion||secciones[0]||grupo
+  const filtrados=stickers.filter(s=>s.seccion===secActiva)
+  const tengo=Object.values(mis).filter(s=>s.quantity>=1).length
+  const repito=Object.values(mis).filter(s=>s.quantity>=2).length
+  const faltan=stickers.length-tengo
+  const pct=stickers.length>0?Math.round(tengo/stickers.length*100):0
+  const color=COLORES[grupo]||'#00B4D8'
 
-  // Stickers del grupo activo
-  const seccionesDelGrupo = GRUPOS[grupoActivo] || []
-  const seccionFinal = seccionActiva || seccionesDelGrupo[0]
-  const stickersFiltrados = stickers.filter(s => s.seccion === seccionFinal)
-
-  const tengo = Object.values(misStickers).filter(s => s.quantity >= 1).length
-  const repito = Object.values(misStickers).filter(s => s.quantity >= 2).length
-  const mefaltan = stickers.length - tengo
-  const pct = stickers.length > 0 ? Math.round((tengo / stickers.length) * 100) : 0
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{background:'var(--dark)'}}>
-      <div className="text-center">
-        <div className="font-display text-4xl font-black mb-2" style={{color:'var(--gold)'}}>METAXPORT</div>
-        <div className="text-sm animate-pulse" style={{color:'var(--text-dim)'}}>Cargando tu álbum...</div>
+  if(loading) return(
+    <div style={{minHeight:'100vh',background:'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{fontFamily:'Syne',fontSize:32,fontWeight:800,background:'linear-gradient(135deg,#E8363D,#F47B20,#F5C518)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>MetaXport</div>
+        <div style={{color:'var(--text2)',fontSize:13,marginTop:8}}>Cargando tu álbum...</div>
       </div>
     </div>
   )
 
-  return (
-    <main className="min-h-screen" style={{background:'var(--dark)'}}>
+  return(
+    <main style={{minHeight:'100vh',background:'var(--bg)'}}>
 
       {/* Navbar */}
-      <nav className="navbar sticky top-0 z-50 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-display text-xl font-black tracking-wider" style={{color:'var(--gold)'}}>
-            META<span style={{color:'var(--text)'}}>XPORT</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => router.push('/intercambios')}
-            className="btn-ghost px-3 py-2 text-xs">
-            🔄 Intercambios
-          </button>
-          <button onClick={() => router.push('/perfil')}
-            className="btn-ghost px-3 py-2 text-xs">
-            👤 Perfil
-          </button>
-          <button onClick={handleLogout}
-            className="btn-ghost px-3 py-2 text-xs">
-            Salir
-          </button>
+      <nav className="navbar" style={{position:'sticky',top:0,zIndex:50,padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:800}}>
+          <span style={{background:'linear-gradient(135deg,#E8363D,#F47B20)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Meta</span>
+          <span style={{color:'white'}}>Xport</span>
+        </span>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-ghost" style={{padding:'7px 14px'}} onClick={()=>router.push('/intercambios')}>🔄 Intercambios</button>
+          <button className="btn btn-ghost" style={{padding:'7px 14px'}} onClick={()=>router.push('/perfil')}>👤 {user?.user_metadata?.full_name?.split(' ')[0]}</button>
         </div>
       </nav>
 
-      {/* Stats bar */}
-      <div className="px-4 py-4 border-b" style={{borderColor:'rgba(255,255,255,0.06)', background:'var(--dark-2)'}}>
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex gap-6">
-              <div className="text-center">
-                <div className="font-display text-2xl font-black" style={{color:'var(--cyan)'}}>{tengo}</div>
-                <div className="text-xs uppercase tracking-wider" style={{color:'var(--text-dim)'}}>Tengo</div>
-              </div>
-              <div className="text-center">
-                <div className="font-display text-2xl font-black" style={{color:'var(--red)'}}>{mefaltan}</div>
-                <div className="text-xs uppercase tracking-wider" style={{color:'var(--text-dim)'}}>Faltan</div>
-              </div>
-              <div className="text-center">
-                <div className="font-display text-2xl font-black" style={{color:'var(--green)'}}>{repito}</div>
-                <div className="text-xs uppercase tracking-wider" style={{color:'var(--text-dim)'}}>Repito</div>
+      {/* Stats hero */}
+      <div style={{padding:'20px 20px 0',maxWidth:680,margin:'0 auto'}}>
+        <div style={{
+          background:`linear-gradient(135deg, ${color}18, ${color}08)`,
+          border:`1px solid ${color}25`,
+          borderRadius:20,padding:'20px 24px',marginBottom:20
+        }}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
+            <div>
+              <div style={{fontFamily:'Syne',fontSize:24,fontWeight:800,color:'white'}}>{pct}% completado</div>
+              <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>
+                {tengo} tengo · {faltan} faltan · {repito} repito
               </div>
             </div>
-            <div className="text-right">
-              <div className="font-display text-2xl font-black" style={{color:'var(--gold)'}}>{pct}%</div>
-              <div className="text-xs uppercase tracking-wider" style={{color:'var(--text-dim)'}}>Completado</div>
+            <div style={{fontSize:28,fontFamily:'Syne',fontWeight:800,color}}>
+              {tengo}<span style={{fontSize:14,color:'var(--text2)',fontWeight:400}}>/{stickers.length}</span>
             </div>
           </div>
-          {/* Barra de progreso */}
-          <div className="h-1 rounded-full overflow-hidden" style={{background:'rgba(255,255,255,0.08)'}}>
-            <div className="h-full rounded-full transition-all duration-500"
-              style={{width:`${pct}%`, background:`linear-gradient(90deg, var(--cyan), var(--gold))`}} />
+          <div className="progress-track">
+            <div className="progress-fill" style={{width:`${pct}%`, background:`linear-gradient(90deg, ${color}, ${color}99)`}} />
           </div>
         </div>
-      </div>
-
-      <div className="max-w-5xl mx-auto px-4 py-6">
 
         {/* Instrucción */}
-        <p className="text-center text-xs mb-6 tracking-wider uppercase" style={{color:'var(--text-dim)'}}>
-          1 toque = tienes · 2 toques = repetida · 3 toques = quitar
-        </p>
+        <div style={{display:'flex',gap:16,justifyContent:'center',marginBottom:20}}>
+          {[['·','Vacía','rgba(255,255,255,0.2)'],['cyan','Tengo','#00B4D8'],['green','Repito','#3BB273']].map(([k,l,c])=>(
+            <div key={l} style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:'var(--text2)'}}>
+              <span style={{width:8,height:8,borderRadius:'50%',background:c,display:'inline-block'}}/>
+              {l}
+            </div>
+          ))}
+        </div>
 
-        {/* Selector de grupos */}
-        <div className="mb-4">
-          <div className="text-xs uppercase tracking-widest mb-3 font-display" style={{color:'var(--text-dim)'}}>
-            Grupos del Mundial
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {Object.keys(GRUPOS).map(g => (
-              <button key={g}
-                onClick={() => { setGrupoActivo(g); setSeccionActiva(null) }}
-                className="grupo-pill"
-                style={grupoActivo === g ? {
-                  background: COLORES_GRUPO[g],
-                  borderColor: COLORES_GRUPO[g],
-                  color: '#080C14',
-                } : {
-                  background: 'transparent',
-                  borderColor: 'rgba(255,255,255,0.15)',
-                  color: 'var(--text-dim)',
-                }}>
+        {/* Grupos scroll */}
+        <div style={{overflowX:'auto',paddingBottom:4,marginBottom:12}}>
+          <div style={{display:'flex',gap:8,width:'max-content'}}>
+            {Object.keys(GRUPOS).map(g=>(
+              <button key={g} className={`grupo-btn${grupo===g?' active':''}`}
+                onClick={()=>{setGrupo(g);setSeccion(null)}}
+                style={grupo===g?{background:COLORES[g],borderColor:COLORES[g]}:{}}>
                 Grupo {g}
               </button>
             ))}
-            <button
-              onClick={() => { setGrupoActivo('FWC'); setSeccionActiva('FWC') }}
-              className="grupo-pill"
-              style={grupoActivo === 'FWC' ? {
-                background:'var(--gold)', borderColor:'var(--gold)', color:'#080C14'
-              } : {
-                background:'transparent', borderColor:'rgba(255,255,255,0.15)', color:'var(--text-dim)'
-              }}>
-              🏆 FIFA WC
+            <button className={`grupo-btn${grupo==='FWC'?' active':''}`}
+              onClick={()=>{setGrupo('FWC');setSeccion('FWC')}}
+              style={grupo==='FWC'?{background:COLORES.FWC,borderColor:COLORES.FWC,color:'#000'}:{}}>
+              🏆 FIFA
             </button>
-            <button
-              onClick={() => { setGrupoActivo('CC'); setSeccionActiva('CC') }}
-              className="grupo-pill"
-              style={grupoActivo === 'CC' ? {
-                background:'var(--red)', borderColor:'var(--red)', color:'white'
-              } : {
-                background:'transparent', borderColor:'rgba(255,255,255,0.15)', color:'var(--text-dim)'
-              }}>
-              🥤 Coca-Cola
+            <button className={`grupo-btn${grupo==='CC'?' active':''}`}
+              onClick={()=>{setGrupo('CC');setSeccion('CC')}}
+              style={grupo==='CC'?{background:COLORES.CC,borderColor:COLORES.CC}:{}}>
+              🥤 Coca
             </button>
           </div>
         </div>
 
-        {/* Selector de selección dentro del grupo */}
-        {GRUPOS[grupoActivo] && (
-          <div className="flex gap-2 mb-6 flex-wrap">
-            {GRUPOS[grupoActivo].map(sec => {
-              const isActive = seccionFinal === sec
-              const color = COLORES_GRUPO[grupoActivo]
-              const stickersSec = stickers.filter(s => s.seccion === sec)
-              const tieneSec = stickersSec.filter(s => misStickers[s.id]?.quantity >= 1).length
-              const pctSec = stickersSec.length > 0 ? Math.round((tieneSec / stickersSec.length) * 100) : 0
-              return (
-                <button key={sec}
-                  onClick={() => setSeccionActiva(sec)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-display font-bold tracking-wide transition-all"
-                  style={isActive ? {
-                    background: `${color}22`,
-                    border: `1px solid ${color}`,
-                    color: color,
-                  } : {
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: 'var(--text-dim)',
+        {/* Selecciones del grupo */}
+        {GRUPOS[grupo]&&(
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
+            {GRUPOS[grupo].map(sec=>{
+              const stkSec=stickers.filter(s=>s.seccion===sec)
+              const tieneSec=stkSec.filter(s=>mis[s.id]?.quantity>=1).length
+              const pctSec=stkSec.length>0?Math.round(tieneSec/stkSec.length*100):0
+              const isAct=secActiva===sec
+              return(
+                <button key={sec} className={`selec-btn${isAct?' active':''}`}
+                  onClick={()=>setSeccion(sec)}
+                  style={isAct?{borderColor:`${color}50`,background:`${color}12`,color:'white'}:{}}>
+                  <span style={{fontSize:13}}>{PAISES[sec]||sec}</span>
+                  <span style={{
+                    fontSize:10,padding:'1px 6px',borderRadius:50,fontWeight:700,
+                    background: pctSec===100?'rgba(59,178,115,0.2)':'rgba(255,255,255,0.06)',
+                    color: pctSec===100?'#3BB273':'var(--text3)'
                   }}>
-                  <span>{PAISES[sec] || sec}</span>
-                  <span className="text-xs opacity-60">{pctSec}%</span>
+                    {pctSec}%
+                  </span>
                 </button>
               )
             })}
           </div>
         )}
 
-        {/* Grid de figuritas */}
-        <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
-          {stickersFiltrados.map(sticker => {
-            const mio = misStickers[sticker.id]
-            const quantity = mio?.quantity || 0
-            const color = COLORES_GRUPO[grupoActivo] || 'var(--gold)'
+        {/* Título selección activa */}
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+          <div style={{width:3,height:20,borderRadius:2,background:color}} />
+          <span style={{fontSize:13,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:'0.08em'}}>
+            {PAISES[secActiva]||secActiva} · {filtrados.length} figuritas
+          </span>
+        </div>
 
-            return (
-              <button key={sticker.id}
-                onClick={() => toggleSticker(sticker)}
-                title={`${sticker.jugador}`}
-                className={`relative rounded-lg p-2 text-center transition-all hover:scale-105 active:scale-95 ${
-                  quantity === 0 ? 'sticker-empty' :
-                  quantity >= 2 ? 'sticker-repeat animate-pulse-glow' : 'sticker-have'
-                }`}>
-                <div className="font-display text-xs font-black"
-                  style={{color: quantity === 0 ? 'var(--text-dim)' : quantity >= 2 ? 'var(--green)' : 'var(--cyan)'}}>
-                  {sticker.jugador}
+        {/* Grid figuritas */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(56px,1fr))',gap:6,paddingBottom:40}}>
+          {filtrados.map(s=>{
+            const m=mis[s.id]
+            const q=m?.quantity||0
+            return(
+              <button key={s.id} onClick={()=>toggle(s)}
+                className={`stk ${q===0?'stk-empty':q>=2?'stk-repeat':'stk-have'}`}
+                title={s.jugador}>
+                <div style={{fontSize:9,fontWeight:700,letterSpacing:'0.02em',lineHeight:1.2}}>
+                  {s.jugador}
                 </div>
-                {quantity >= 2 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-black"
-                    style={{background:'var(--green)', color:'var(--dark)', fontSize:'8px'}}>
-                    R
-                  </span>
+                {q>=2&&(
+                  <div style={{
+                    marginTop:3,fontSize:8,fontWeight:800,
+                    color:'#3BB273',textTransform:'uppercase',letterSpacing:'0.05em'
+                  }}>REP</div>
                 )}
               </button>
             )
