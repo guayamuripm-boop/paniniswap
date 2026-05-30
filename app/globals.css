@@ -1,26 +1,154 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --gold: #F5C518;
+  --gold-dim: #C9A014;
+  --dark: #080C14;
+  --dark-2: #0D1420;
+  --dark-3: #131C2E;
+  --dark-4: #1A2540;
+  --cyan: #00D4FF;
+  --cyan-dim: #0099BB;
+  --green: #00FF88;
+  --red: #FF3B5C;
+  --text: #E8EDF5;
+  --text-dim: #7A8BA8;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  min-height: 100vh;
 }
+
+.font-display { font-family: 'Barlow Condensed', sans-serif; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--dark-2); }
+::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
+
+/* Grid pattern background */
+.bg-grid {
+  background-image: 
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glow effects */
+.glow-gold { box-shadow: 0 0 20px rgba(245, 197, 24, 0.3); }
+.glow-cyan { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+.text-glow-gold { text-shadow: 0 0 20px rgba(245, 197, 24, 0.5); }
+
+/* Sticker card states */
+.sticker-empty { 
+  background: rgba(255,255,255,0.03); 
+  border: 1px solid rgba(255,255,255,0.06);
+  opacity: 0.5;
+}
+.sticker-have { 
+  background: rgba(0, 212, 255, 0.08); 
+  border: 1px solid rgba(0, 212, 255, 0.4);
+}
+.sticker-repeat { 
+  background: rgba(0, 255, 136, 0.08); 
+  border: 1px solid rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.15);
+}
+
+/* Navbar */
+.navbar {
+  background: rgba(8, 12, 20, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(245, 197, 24, 0.15);
+}
+
+/* Cards */
+.card {
+  background: var(--dark-3);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+}
+.card:hover {
+  border-color: rgba(0, 212, 255, 0.2);
+  transition: border-color 0.2s;
+}
+
+/* Botones */
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: var(--dark);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.btn-primary:hover { 
+  transform: translateY(-1px); 
+  box-shadow: 0 4px 20px rgba(245, 197, 24, 0.4);
+}
+
+.btn-ghost {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.btn-ghost:hover { 
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(0, 212, 255, 0.3);
+}
+
+/* Pill de grupo */
+.grupo-pill {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.grupo-pill.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--dark);
+}
+.grupo-pill.inactive {
+  background: transparent;
+  border-color: rgba(255,255,255,0.15);
+  color: var(--text-dim);
+}
+.grupo-pill.inactive:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* Animaciones */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 255, 136, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(0, 255, 136, 0.5); }
+}
+.animate-fade-up { animation: fadeUp 0.4s ease forwards; }
+.animate-pulse-glow { animation: pulse-glow 2s infinite; }
