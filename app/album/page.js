@@ -1,4 +1,7 @@
 'use client'
+import BottomNav from '../../components/BottomNav'
+import Navbar from '../../components/Navbar'
+import { Circle } from 'lucide-react'
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -159,7 +162,25 @@ export default function Album() {
     <main style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
 
       {/* Navbar mobile */}
-      <nav className="navbar" style={{ position: 'sticky', top: 0, zIndex: 50, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <nav
+        showSearch={true}
+        onSearch={() => { setModoBusqueda(!modoBusqueda); setBusqueda('') }}
+        searchActive={modoBusqueda}
+      >
+        {!modoBusqueda && (
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 14 }}>
+            {[
+              { color: 'rgba(255,255,255,0.15)', label: 'Vacía' },
+              { color: '#00B4D8', label: 'Tengo' },
+              { color: '#3BB273', label: 'Repetida' },
+            ].map(({ color: c, label }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text2)' }}>
+                <Circle size={7} fill={c} color={c} />
+                {label}
+              </div>
+            ))}
+          </div>
+        )}
         <span style={{ fontFamily: 'Syne', fontSize: 20, fontWeight: 800 }}>
           <span style={{ background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Meta</span>
           <span style={{ color: 'white' }}>Xport</span>
@@ -456,7 +477,8 @@ export default function Album() {
           </button>
         ))}
       </div>
-
+      <BottomNav active="/album" />
     </main>
+    
   )
 }

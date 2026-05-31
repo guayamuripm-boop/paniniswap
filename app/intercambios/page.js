@@ -1,4 +1,7 @@
 'use client'
+import BottomNav from '../../components/BottomNav'
+import Navbar from '../../components/Navbar'
+import { MessageCircle, PhoneOff, MapPin, Repeat2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
