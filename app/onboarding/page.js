@@ -16,6 +16,19 @@ export default function Onboarding() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.push('/'); return }
+
+      // Si ya completó el onboarding, mandarlo al álbum
+      const { data: perfil } = await supabase
+        .from('profiles')
+        .select('onboarding_completo, telefono, latitud')
+        .eq('id', session.user.id)
+        .single()
+
+      if (perfil?.onboarding_completo && perfil?.telefono && perfil?.latitud) {
+        router.push('/album')
+        return
+      }
+
       setUser(session.user)
       setForm(f => ({
         ...f,
