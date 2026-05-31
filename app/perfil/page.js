@@ -78,17 +78,27 @@ export default function Perfil() {
 
   return (
     <main style={{minHeight:'100vh',background:'var(--bg)'}}>
-      <nav className="navbar" style={{position:'sticky',top:0,zIndex:50,padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <span style={{fontFamily:'Syne',fontSize:18,fontWeight:800}}>
-          <span style={{background:'linear-gradient(135deg,#E8363D,#F47B20)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>Meta</span>
-          <span style={{color:'white'}}>Xport</span>
-        </span>
-        <div style={{display:'flex',gap:8}}>
-          <button className="btn btn-ghost" style={{padding:'7px 14px'}} onClick={()=>router.push('/album')}>📒 Álbum</button>
-          <button className="btn btn-ghost" style={{padding:'7px 14px'}} onClick={()=>router.push('/intercambios')}>🔄 Intercambios</button>
-          <button className="btn btn-ghost" style={{padding:'7px 14px'}} onClick={handleLogout}>Salir</button>
-        </div>
-      </nav>
+            {/* Bottom Nav */}
+            <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+        background: 'rgba(6,8,16,0.92)', backdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        padding: '10px 0 max(10px, env(safe-area-inset-bottom))',
+        display: 'flex', justifyContent: 'space-around'
+      }}>
+        {[
+          { icon: '📒', label: 'Álbum', path: '/album' },
+          { icon: '🔄', label: 'Swaps', path: '/intercambios' },
+          { icon: '📊', label: 'Análisis', path: '/analisis' },
+          { icon: '👤', label: 'Perfil', path: '/perfil', active: true },
+        ].map(item => (
+          <button key={item.path} onClick={() => router.push(item.path)}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 16px', color: item.active ? '#0EA5E9' : 'var(--text3)' }}>
+            <span style={{ fontSize: 20 }}>{item.icon}</span>
+            <span style={{ fontSize: 10, fontWeight: 600 }}>{item.label}</span>
+          </button>
+        ))}
+      </div>
 
       <div style={{maxWidth:480,margin:'0 auto',padding:'32px 16px'}}>
 
