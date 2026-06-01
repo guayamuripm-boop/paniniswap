@@ -50,7 +50,7 @@ export default function Home() {
         <div className="anim-up-1" style={{ marginBottom: 16 }}>
           <h1 style={{
             fontFamily: 'Syne, sans-serif',
-            fontSize: 'clamp(64px, 14vw, 110px)',
+            fontSize: 'clamp(40px, 11vw, 110px)',
             fontWeight: 800, lineHeight: 1, letterSpacing: '-0.03em', margin: 0,
           }}>
             <span style={{
@@ -78,8 +78,14 @@ export default function Home() {
 
         {/* CTA */}
         <button onClick={handleLogin} disabled={cargando}
-          className="btn btn-primary anim-up-3"
-          style={{ padding: '15px 36px', fontSize: 15, borderRadius: 14, gap: 10, display: 'inline-flex', alignItems: 'center' }}>
+          className="btn anim-up-3"
+          style={{ 
+            padding: '15px 36px', fontSize: 15, borderRadius: 14, 
+            gap: 10, display: 'inline-flex', alignItems: 'center',
+            background: 'linear-gradient(135deg, #0EA5E9, #1D4ED8)',
+            color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer',
+            boxShadow: '0 4px 24px rgba(14,165,233,0.35)'
+          }}>
           {cargando ? (
             <>
               <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.8s linear infinite' }} />
