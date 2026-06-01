@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /album
+Disallow: /intercambios
+Disallow: /analisis
+Disallow: /perfil
+Disallow: /onboarding
+Disallow: /check
+
+Sitemap: https://paniniswap-6hlt.vercel.app/sitemap.xml

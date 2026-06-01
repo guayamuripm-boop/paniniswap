@@ -91,8 +91,11 @@ export default function Album() {
   }
 
   const cargar = async (uid) => {
-    const { data: todos } = await supabase.from('stickers').select('*').order('numero')
-    const { data: mios } = await supabase.from('user_stickers').select('*').eq('user_id', uid)
+    // Correr ambas queries en paralelo en vez de secuencial
+    const [{ data: todos }, { data: mios }] = await Promise.all([
+      supabase.from('stickers').select('id, numero, jugador, seccion').order('numero'),
+      supabase.from('user_stickers').select('id, sticker_id, quantity').eq('user_id', uid)
+    ])
     const m = {}
     if (mios) mios.forEach(s => { m[s.sticker_id] = s })
     setStickers(todos || [])

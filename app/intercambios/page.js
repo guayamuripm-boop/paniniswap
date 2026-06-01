@@ -23,19 +23,31 @@ export default function Intercambios() {
   }, [])
 
   const calcular = async (uid) => {
-    const { data: mis } = await supabase.from('user_stickers').select('sticker_id,quantity').eq('user_id', uid)
+    // Todo en paralelo
+    const [{ data: mis }, { data: todos }, { data: otros }] = await Promise.all([
+      supabase.from('user_stickers').select('sticker_id,quantity').eq('user_id', uid),
+      supabase.from('stickers').select('id'),
+      supabase.from('user_stickers').select('user_id,sticker_id,quantity').neq('user_id', uid)
+    ])
+
     if (!mis || mis.length === 0) return
+
     const tengo = mis.filter(s => s.quantity >= 1).map(s => s.sticker_id)
     const repito = mis.filter(s => s.quantity >= 2).map(s => s.sticker_id)
-    const { data: todos } = await supabase.from('stickers').select('id')
-    const todosIds = todos.map(s => s.id)
+    const todosIds = (todos || []).map(s => s.id)
     const faltan = todosIds.filter(id => !tengo.includes(id))
-    if (repito.length === 0 && faltan.length === 0) return
-    const { data: otros } = await supabase.from('user_stickers').select('user_id,sticker_id,quantity').neq('user_id', uid)
+
     if (!otros || otros.length === 0) return
+
+    // Agrupar por usuario
     const porUser = {}
-    otros.forEach(s => { if (!porUser[s.user_id]) porUser[s.user_id] = []; porUser[s.user_id].push(s) })
-    const res = []
+    otros.forEach(s => {
+      if (!porUser[s.user_id]) porUser[s.user_id] = []
+      porUser[s.user_id].push(s)
+    })
+
+    // Calcular scores
+    const candidatos = []
     for (const [oId, sus] of Object.entries(porUser)) {
       const elTiene = sus.filter(s => s.quantity >= 1).map(s => s.sticker_id)
       const elRep = sus.filter(s => s.quantity >= 2).map(s => s.sticker_id)
@@ -43,17 +55,46 @@ export default function Intercambios() {
       const dame = elRep.filter(id => faltan.includes(id))
       const doy = repito.filter(id => elFal.includes(id))
       const score = dame.length + doy.length
-      if (score > 0) {
-        const { data: p } = await supabase.from('profiles').select('full_name,avatar_url,ciudad,telefono,latitud,longitud').eq('id', oId).single()
-        const { data: sd } = await supabase.from('stickers').select('jugador,seccion').in('id', dame.slice(0, 6))
-        const { data: sg } = await supabase.from('stickers').select('jugador,seccion').in('id', doy.slice(0, 6))
-        res.push({ userId: oId, nombre: p?.full_name || 'Usuario', avatar: p?.avatar_url, ciudad: p?.ciudad, telefono: p?.telefono, score, dame: sd || [], doy: sg || [], totalDame: dame.length, totalDoy: doy.length })
-      }
+      if (score > 0) candidatos.push({ oId, dame, doy, score })
     }
-    res.sort((a, b) => b.score - a.score)
+
+    candidatos.sort((a, b) => b.score - a.score)
+
+    // Una sola query para todos los perfiles de golpe
+    const userIds = candidatos.map(c => c.oId)
+    const stickerIds = [...new Set([
+      ...candidatos.flatMap(c => c.dame.slice(0, 6)),
+      ...candidatos.flatMap(c => c.doy.slice(0, 6))
+    ])]
+
+    const [{ data: perfiles }, { data: stkData }] = await Promise.all([
+      supabase.from('profiles').select('id,full_name,avatar_url,ciudad,telefono').in('id', userIds),
+      supabase.from('stickers').select('id,jugador,seccion').in('id', stickerIds)
+    ])
+
+    const perfilMap = {}
+    if (perfiles) perfiles.forEach(p => { perfilMap[p.id] = p })
+    const stkMap = {}
+    if (stkData) stkData.forEach(s => { stkMap[s.id] = s })
+
+    const res = candidatos.map(({ oId, dame, doy, score }) => {
+      const p = perfilMap[oId] || {}
+      return {
+        userId: oId,
+        nombre: p.full_name || 'Usuario',
+        avatar: p.avatar_url,
+        ciudad: p.ciudad,
+        telefono: p.telefono,
+        score,
+        dame: dame.slice(0, 6).map(id => stkMap[id]).filter(Boolean),
+        doy: doy.slice(0, 6).map(id => stkMap[id]).filter(Boolean),
+        totalDame: dame.length,
+        totalDoy: doy.length,
+      }
+    })
+
     setMatches(res)
   }
-
   const filtrados = matches.filter(m => !filtro || m.ciudad?.toLowerCase().includes(filtro.toLowerCase()))
 
   const BottomNav = () => (
