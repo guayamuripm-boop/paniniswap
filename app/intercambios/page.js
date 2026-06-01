@@ -1,10 +1,10 @@
 'use client'
-import BottomNav from '../../components/BottomNav'
-import Navbar from '../../components/Navbar'
-import { MessageCircle, PhoneOff, MapPin, Repeat2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import BottomNav from '../../components/BottomNav'
+import Navbar from '../../components/Navbar'
+import { MessageCircle, PhoneOff } from 'lucide-react'
 
 export default function Intercambios() {
   const [user, setUser] = useState(null)
@@ -23,30 +23,19 @@ export default function Intercambios() {
   }, [])
 
   const calcular = async (uid) => {
-    // Todo en paralelo
     const [{ data: mis }, { data: todos }, { data: otros }] = await Promise.all([
       supabase.from('user_stickers').select('sticker_id,quantity').eq('user_id', uid),
       supabase.from('stickers').select('id'),
       supabase.from('user_stickers').select('user_id,sticker_id,quantity').neq('user_id', uid)
     ])
-
     if (!mis || mis.length === 0) return
-
     const tengo = mis.filter(s => s.quantity >= 1).map(s => s.sticker_id)
     const repito = mis.filter(s => s.quantity >= 2).map(s => s.sticker_id)
     const todosIds = (todos || []).map(s => s.id)
     const faltan = todosIds.filter(id => !tengo.includes(id))
-
     if (!otros || otros.length === 0) return
-
-    // Agrupar por usuario
     const porUser = {}
-    otros.forEach(s => {
-      if (!porUser[s.user_id]) porUser[s.user_id] = []
-      porUser[s.user_id].push(s)
-    })
-
-    // Calcular scores
+    otros.forEach(s => { if (!porUser[s.user_id]) porUser[s.user_id] = []; porUser[s.user_id].push(s) })
     const candidatos = []
     for (const [oId, sus] of Object.entries(porUser)) {
       const elTiene = sus.filter(s => s.quantity >= 1).map(s => s.sticker_id)
@@ -57,68 +46,33 @@ export default function Intercambios() {
       const score = dame.length + doy.length
       if (score > 0) candidatos.push({ oId, dame, doy, score })
     }
-
     candidatos.sort((a, b) => b.score - a.score)
-
-    // Una sola query para todos los perfiles de golpe
     const userIds = candidatos.map(c => c.oId)
     const stickerIds = [...new Set([
       ...candidatos.flatMap(c => c.dame.slice(0, 6)),
       ...candidatos.flatMap(c => c.doy.slice(0, 6))
     ])]
-
     const [{ data: perfiles }, { data: stkData }] = await Promise.all([
       supabase.from('profiles').select('id,full_name,avatar_url,ciudad,telefono').in('id', userIds),
-      supabase.from('stickers').select('id,jugador,seccion').in('id', stickerIds)
+      supabase.from('stickers').select('id,jugador').in('id', stickerIds)
     ])
-
     const perfilMap = {}
     if (perfiles) perfiles.forEach(p => { perfilMap[p.id] = p })
     const stkMap = {}
     if (stkData) stkData.forEach(s => { stkMap[s.id] = s })
-
-    const res = candidatos.map(({ oId, dame, doy, score }) => {
+    setMatches(candidatos.map(({ oId, dame, doy, score }) => {
       const p = perfilMap[oId] || {}
       return {
-        userId: oId,
-        nombre: p.full_name || 'Usuario',
-        avatar: p.avatar_url,
-        ciudad: p.ciudad,
-        telefono: p.telefono,
-        score,
+        userId: oId, nombre: p.full_name || 'Usuario', avatar: p.avatar_url,
+        ciudad: p.ciudad, telefono: p.telefono, score,
         dame: dame.slice(0, 6).map(id => stkMap[id]).filter(Boolean),
         doy: doy.slice(0, 6).map(id => stkMap[id]).filter(Boolean),
-        totalDame: dame.length,
-        totalDoy: doy.length,
+        totalDame: dame.length, totalDoy: doy.length,
       }
-    })
-
-    setMatches(res)
+    }))
   }
-  const filtrados = matches.filter(m => !filtro || m.ciudad?.toLowerCase().includes(filtro.toLowerCase()))
 
-  const BottomNav = () => (
-    <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
-      background: 'rgba(6,8,16,0.92)', backdropFilter: 'blur(20px)',
-      borderTop: '1px solid rgba(255,255,255,0.06)',
-      padding: '10px 0 max(10px, env(safe-area-inset-bottom))',
-      display: 'flex', justifyContent: 'space-around'
-    }}>
-      {[
-        { icon: '📒', label: 'Álbum', path: '/album' },
-        { icon: '🔄', label: 'Swaps', path: '/intercambios', active: true },
-        { icon: '📊', label: 'Análisis', path: '/analisis' },
-        { icon: '👤', label: 'Perfil', path: '/perfil' },
-      ].map(item => (
-        <button key={item.path} onClick={() => router.push(item.path)}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 16px', color: item.active ? '#0EA5E9' : 'var(--text3)' }}>
-          <span style={{ fontSize: 20 }}>{item.icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 600 }}>{item.label}</span>
-        </button>
-      ))}
-    </div>
-  )
+  const filtrados = matches.filter(m => !filtro || m.ciudad?.toLowerCase().includes(filtro.toLowerCase()))
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -131,28 +85,19 @@ export default function Intercambios() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
-      <nav className="navbar" style={{ position: 'sticky', top: 0, zIndex: 40, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontFamily: 'Syne', fontSize: 20, fontWeight: 800 }}>
-          <span style={{ background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Meta</span>
-          <span style={{ color: 'white' }}>Xport</span>
-        </span>
-        <span style={{ fontSize: 13, color: 'var(--text2)', fontWeight: 600 }}>
-          {filtrados.length} match{filtrados.length !== 1 ? 'es' : ''}
-        </span>
-      </nav>
+      <Navbar />
 
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
-
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
             Mis <span style={{ background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Intercambios</span>
           </h1>
           <p style={{ color: 'var(--text2)', fontSize: 13 }}>
-            Personas con las que puedes intercambiar ahora mismo
+            {filtrados.length} match{filtrados.length !== 1 ? 'es' : ''} encontrado{filtrados.length !== 1 ? 's' : ''}
           </p>
         </div>
 
-        {/* Filtro */}
+        {/* Filtro ciudad */}
         <div style={{ position: 'relative', marginBottom: 16 }}>
           <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14 }}>📍</span>
           <input className="input-field" style={{ paddingLeft: 38 }}
@@ -162,22 +107,29 @@ export default function Intercambios() {
 
         {filtrados.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+            <div style={{ marginBottom: 16, color: 'var(--text3)' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </div>
             <p style={{ fontFamily: 'Syne', fontSize: 18, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 }}>Sin matches aún</p>
             <p style={{ color: 'var(--text3)', fontSize: 14, marginBottom: 24 }}>Marca más figuritas y agrega algunas como repetidas</p>
-            <button className="btn btn-primary" style={{ padding: '12px 28px' }} onClick={() => router.push('/album')}>
+            <button style={{
+              padding: '12px 28px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', color: 'white',
+              fontWeight: 700, fontSize: 14
+            }} onClick={() => router.push('/album')}>
               Ir a mi Álbum
             </button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {filtrados.map((m, i) => (
+            {filtrados.map((m) => (
               <div key={m.userId} style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: 20, overflow: 'hidden'
               }}>
-                {/* Header usuario */}
+                {/* Header */}
                 <div style={{ padding: '16px 16px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
                   {m.avatar ? (
                     <img src={m.avatar} style={{ width: 48, height: 48, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)', flexShrink: 0 }} alt="" />
@@ -193,10 +145,9 @@ export default function Intercambios() {
                     <div style={{ fontWeight: 700, fontSize: 15, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nombre}</div>
                     {m.ciudad && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>📍 {m.ciudad}</div>}
                   </div>
-                  {/* Score badge — protagonista */}
                   <div style={{
                     flexShrink: 0, padding: '8px 14px', borderRadius: 12, textAlign: 'center',
-                    background: 'linear-gradient(135deg, rgba(14,165,233,0.2), rgba(29,78,216,0.2))',
+                    background: 'linear-gradient(135deg,rgba(14,165,233,0.2),rgba(29,78,216,0.2))',
                     border: '1px solid rgba(14,165,233,0.3)'
                   }}>
                     <div style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 800, color: '#0EA5E9', lineHeight: 1 }}>{m.score}</div>
@@ -209,30 +160,24 @@ export default function Intercambios() {
                   {m.dame.length > 0 && (
                     <div style={{ marginBottom: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#3BB273', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-                        ✅ Te puede dar ({m.totalDame})
+                        Te puede dar ({m.totalDame})
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {m.dame.map((s, idx) => (
-                          <span key={idx} style={{
-                            fontSize: 11, padding: '3px 8px', borderRadius: 6, fontWeight: 600,
-                            background: 'rgba(59,178,115,0.1)', border: '1px solid rgba(59,178,115,0.25)', color: '#3BB273'
-                          }}>{s.jugador}</span>
+                        {m.dame.map((s, i) => (
+                          <span key={i} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, fontWeight: 600, background: 'rgba(59,178,115,0.1)', border: '1px solid rgba(59,178,115,0.25)', color: '#3BB273' }}>{s.jugador}</span>
                         ))}
                         {m.totalDame > 6 && <span style={{ fontSize: 11, color: 'var(--text3)', padding: '3px 4px' }}>+{m.totalDame - 6} más</span>}
                       </div>
                     </div>
                   )}
                   {m.doy.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
+                    <div style={{ marginBottom: 4 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#0EA5E9', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-                        🔄 Tú le das ({m.totalDoy})
+                        Tú le das ({m.totalDoy})
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {m.doy.map((s, idx) => (
-                          <span key={idx} style={{
-                            fontSize: 11, padding: '3px 8px', borderRadius: 6, fontWeight: 600,
-                            background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.25)', color: '#0EA5E9'
-                          }}>{s.jugador}</span>
+                        {m.doy.map((s, i) => (
+                          <span key={i} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, fontWeight: 600, background: 'rgba(0,180,216,0.1)', border: '1px solid rgba(0,180,216,0.25)', color: '#0EA5E9' }}>{s.jugador}</span>
                         ))}
                         {m.totalDoy > 6 && <span style={{ fontSize: 11, color: 'var(--text3)', padding: '3px 4px' }}>+{m.totalDoy - 6} más</span>}
                       </div>
@@ -240,28 +185,27 @@ export default function Intercambios() {
                   )}
                 </div>
 
-                {/* Botón WhatsApp — protagonista, ancho completo */}
+                {/* Botón WhatsApp */}
                 {m.telefono ? (
                   <a href={`https://wa.me/${m.telefono}?text=Hola%20${encodeURIComponent(m.nombre.split(' ')[0])}!%20Te%20escribo%20desde%20MetaXport.%20Podemos%20intercambiar%20${m.score}%20figuritas%20del%20Mundial%202026!%20%F0%9F%8F%86`}
                     target="_blank" rel="noopener noreferrer"
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                      padding: '16px', margin: 0,
-                      background: 'linear-gradient(135deg,#25D366,#128C7E)',
+                      padding: '16px', background: 'linear-gradient(135deg,#25D366,#128C7E)',
                       color: 'white', fontWeight: 700, fontSize: 15, textDecoration: 'none',
-                      borderTop: '1px solid rgba(255,255,255,0.06)',
-                      letterSpacing: '0.02em'
+                      borderTop: '1px solid rgba(255,255,255,0.06)'
                     }}>
-                    <span style={{ fontSize: 20 }}>💬</span>
+                    <MessageCircle size={20} strokeWidth={2} />
                     Contactar · {m.nombre.split(' ')[0]}
                   </a>
                 ) : (
                   <div style={{
                     padding: '14px', textAlign: 'center', fontSize: 13,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     background: 'rgba(255,255,255,0.02)', color: 'var(--text3)',
                     borderTop: '1px solid rgba(255,255,255,0.04)'
                   }}>
-                    📵 Sin WhatsApp registrado
+                    <PhoneOff size={15} /> Sin WhatsApp registrado
                   </div>
                 )}
               </div>
@@ -269,7 +213,7 @@ export default function Intercambios() {
           </div>
         )}
       </div>
-      <BottomNav />
+      <BottomNav active="/intercambios" />
     </main>
   )
 }
