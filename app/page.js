@@ -54,7 +54,7 @@ export default function Home() {
             fontWeight: 800, lineHeight: 1, letterSpacing: '-0.03em', margin: 0,
           }}>
             <span style={{
-              background: 'linear-gradient(135deg, #38BDF8 0%, #0EA5E9 40%, #1D4ED8 100%)',
+              background:'linear-gradient(135deg, #38BDF8 0%, #0EA5E9 40%, #1D4ED8 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             }}>Meta</span>
             <span style={{ color: 'white' }}>Xport</span>
