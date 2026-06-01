@@ -23,14 +23,12 @@ export default function Navbar({ onSearch, showSearch = false, searchActive = fa
         padding: '12px 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
-        {/* Logo */}
         <span style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800, cursor: 'pointer' }}
           onClick={() => router.push('/album')}>
           <span style={{ background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Meta</span>
           <span style={{ color: 'white' }}>Xport</span>
         </span>
 
-        {/* Acciones */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {showSearch && (
             <button onClick={onSearch}
@@ -54,7 +52,6 @@ export default function Navbar({ onSearch, showSearch = false, searchActive = fa
         </div>
       </nav>
 
-      {/* Drawer */}
       {menuOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)' }}
           onClick={() => setMenuOpen(false)}>
@@ -70,10 +67,10 @@ export default function Navbar({ onSearch, showSearch = false, searchActive = fa
             </div>
 
             {[
-              { label: 'Mi Álbum', path: '/album' },
-              { label: 'Intercambios', path: '/intercambios' },
-              { label: 'Análisis', path: '/analisis' },
-              { label: 'Mi Perfil', path: '/perfil' },
+              { label: 'Mi Álbum',      path: '/album' },
+              { label: 'Intercambios',  path: '/intercambios' },
+              { label: 'Análisis',      path: '/analisis' },
+              { label: 'Mi Perfil',     path: '/perfil' },
             ].map(item => (
               <button key={item.path}
                 onClick={() => { router.push(item.path); setMenuOpen(false) }}
@@ -82,7 +79,7 @@ export default function Navbar({ onSearch, showSearch = false, searchActive = fa
                   border: '1px solid rgba(255,255,255,0.07)',
                   background: 'rgba(255,255,255,0.03)',
                   color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: 600,
-                  textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s'
+                  textAlign: 'left', cursor: 'pointer'
                 }}>
                 {item.label}
               </button>

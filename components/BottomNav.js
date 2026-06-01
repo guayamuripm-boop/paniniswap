@@ -3,10 +3,10 @@ import { useRouter } from 'next/navigation'
 import { BookOpen, ArrowLeftRight, BarChart2, User } from 'lucide-react'
 
 const ITEMS = [
-  { icon: BookOpen,       label: 'Álbum',     path: '/album' },
-  { icon: ArrowLeftRight, label: 'Swaps',     path: '/intercambios' },
-  { icon: BarChart2,      label: 'Análisis',  path: '/analisis' },
-  { icon: User,           label: 'Perfil',    path: '/perfil' },
+  { icon: BookOpen,       label: 'Álbum',    path: '/album' },
+  { icon: ArrowLeftRight, label: 'Swaps',    path: '/intercambios' },
+  { icon: BarChart2,      label: 'Análisis', path: '/analisis' },
+  { icon: User,           label: 'Perfil',   path: '/perfil' },
 ]
 
 export default function BottomNav({ active }) {
@@ -27,7 +27,8 @@ export default function BottomNav({ active }) {
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               gap: 4, background: 'none', border: 'none', cursor: 'pointer',
-              padding: '6px 20px', color: isActive ? '#0EA5E9' : 'rgba(255,255,255,0.3)',
+              padding: '6px 20px',
+              color: isActive ? '#0EA5E9' : 'rgba(255,255,255,0.3)',
               transition: 'color 0.2s', position: 'relative'
             }}>
             {isActive && (
