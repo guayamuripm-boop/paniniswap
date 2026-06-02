@@ -331,29 +331,37 @@ export default function Intercambios() {
                   )}
                 </div>
 
-                {/* Botón WhatsApp */}
-                {m.telefono ? (
-                  <a href={`https://wa.me/${m.telefono}?text=Hola%20${encodeURIComponent(m.nombre.split(' ')[0])}!%20Te%20escribo%20desde%20MetaXport.%20Podemos%20intercambiar%20${m.score}%20figuritas%20del%20Mundial%202026!%20%F0%9F%8F%86`}
-                    target="_blank" rel="noopener noreferrer"
+                {/* Botones de acción */}
+                <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <button onClick={() => router.push(`/chat?user=${m.userId}`)}
                     style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                      padding: '16px', background: 'linear-gradient(135deg,#25D366,#128C7E)',
-                      color: 'white', fontWeight: 700, fontSize: 15, textDecoration: 'none',
-                      borderTop: '1px solid rgba(255,255,255,0.06)'
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      padding: '14px', background: 'rgba(14,165,233,0.08)', color: '#0EA5E9',
+                      border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14
                     }}>
-                    <MessageCircle size={20} strokeWidth={2} />
-                    Contactar · {m.nombre.split(' ')[0]}
-                  </a>
-                ) : (
-                  <div style={{
-                    padding: '14px', textAlign: 'center', fontSize: 13,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    background: 'rgba(255,255,255,0.02)', color: 'var(--text3)',
-                    borderTop: '1px solid rgba(255,255,255,0.04)'
-                  }}>
-                    <PhoneOff size={15} /> Sin WhatsApp registrado
-                  </div>
-                )}
+                    <MessageCircle size={18} strokeWidth={1.8} />
+                    Mensaje
+                  </button>
+                  {m.telefono ? (
+                    <a href={`https://wa.me/${m.telefono}?text=Hola%20${encodeURIComponent(m.nombre.split(' ')[0])}!%20Te%20escribo%20desde%20MetaXport.%20Podemos%20intercambiar%20${m.score}%20figuritas%20del%20Mundial%202026!`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{
+                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        padding: '14px', background: 'linear-gradient(135deg,#25D366,#128C7E)',
+                        color: 'white', fontWeight: 700, fontSize: 14, textDecoration: 'none'
+                      }}>
+                      WhatsApp
+                    </a>
+                  ) : (
+                    <div style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '14px', background: 'rgba(255,255,255,0.02)', color: 'var(--text3)',
+                      fontSize: 13
+                    }}>
+                      <PhoneOff size={15} /> Sin teléfono
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

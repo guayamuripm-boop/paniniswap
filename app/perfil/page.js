@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
-import { User, MapPin, Phone, Save } from 'lucide-react'
+import { User, MapPin, Phone, Save, Award, Star, Sparkles, Repeat2, Map, CheckCircle, Zap, Shield } from 'lucide-react'
 
 export default function Perfil() {
   const [user, setUser] = useState(null)
@@ -12,6 +12,7 @@ export default function Perfil() {
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [stats, setStats] = useState({ tengo: 0, repito: 0, mefaltan: 0 })
+  const [insignias, setInsignias] = useState([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -28,6 +29,21 @@ export default function Perfil() {
       const tengo = mios?.filter(s => s.quantity >= 1).length || 0
       const repito = mios?.filter(s => s.quantity >= 2).length || 0
       setStats({ tengo, repito, mefaltan: (todos?.length || 0) - tengo })
+      const badges = []
+      const add = (id, label, icon, unlocked, desc) => badges.push({ id, label, icon, unlocked, desc })
+      add('primer', 'Primer sticker', '🎯', tengo >= 1, 'Marcaste tu primera figurita')
+      add('coleccionista', 'Coleccionista', '📦', tengo >= 50, '50 figuritas marcadas')
+      add('dedicacion', 'Dedicación', '💪', tengo >= 100, '100 figuritas marcadas')
+      add('completista', 'Completista', '🏆', tengo >= 200, '200 figuritas marcadas')
+      add('repetidor', 'Repetidor', '🔄', repito >= 5, '5+ figuritas repetidas')
+      add('swapper', 'Swapper', '🤝', repito >= 1, 'Listo para intercambiar')
+      add('ubicado', 'Ubicado', '📍', !!p?.ciudad, 'Ciudad registrada')
+      add('completo', 'Perfil completo', '✅', !!(p?.ciudad && p?.telefono && p?.full_name), 'Todos tus datos listos')
+      if (p?.created_at) {
+        const dias = Math.floor((Date.now() - new Date(p.created_at)) / 86400000)
+        add('veterano', 'Veterano', '⚡', dias >= 30, `Llevas ${dias} días en MetaXport`)
+      }
+      setInsignias(badges)
       setLoading(false)
     })
   }, [])
@@ -85,6 +101,27 @@ export default function Perfil() {
               <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Insignias */}
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontFamily: 'Syne', fontSize: 16, fontWeight: 800, marginBottom: 12, color: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Award size={18} color="#F5C518" /> Insignias ({insignias.filter(i => i.unlocked).length}/{insignias.length})
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', gap: 8 }}>
+            {insignias.map(i => (
+              <div key={i.id} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                padding: '10px 6px', borderRadius: 12,
+                background: i.unlocked ? 'rgba(245,197,36,0.08)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${i.unlocked ? 'rgba(245,197,36,0.2)' : 'rgba(255,255,255,0.04)'}`,
+                opacity: i.unlocked ? 1 : 0.4, cursor: 'default', transition: 'all 0.2s'
+              }} title={i.unlocked ? i.desc : '🔒 Bloqueada'}>
+                <span style={{ fontSize: 22 }}>{i.unlocked ? i.icon : '🔒'}</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: i.unlocked ? '#F5C518' : 'var(--text3)', textAlign: 'center', lineHeight: 1.2 }}>{i.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Formulario */}

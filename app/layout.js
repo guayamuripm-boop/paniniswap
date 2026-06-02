@@ -1,4 +1,5 @@
 import './globals.css'
+import ServiceWorkerRegister from '../components/ServiceWorkerRegister'
 
 export const metadata = {
   title: 'MetaXport — Álbum Digital del Mundial 2026',
@@ -44,7 +45,10 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body>{children}</body>
+      <body>
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   )
 }

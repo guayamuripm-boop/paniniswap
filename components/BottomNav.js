@@ -1,12 +1,12 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { BookOpen, ArrowLeftRight, BarChart2, User } from 'lucide-react'
+import { BookOpen, ArrowLeftRight, Users, User } from 'lucide-react'
 
 const ITEMS = [
-  { icon: BookOpen,       label: 'Álbum',    path: '/album' },
-  { icon: ArrowLeftRight, label: 'Swaps',    path: '/intercambios' },
-  { icon: BarChart2,      label: 'Análisis', path: '/analisis' },
-  { icon: User,           label: 'Perfil',   path: '/perfil' },
+  { icon: BookOpen,       label: 'Álbum',   path: '/album' },
+  { icon: ArrowLeftRight, label: 'Swaps',   path: '/intercambios' },
+  { icon: Users,          label: 'Grupos',  path: '/grupos' },
+  { icon: User,           label: 'Perfil',  path: '/perfil' },
 ]
 
 export default function BottomNav({ active }) {
