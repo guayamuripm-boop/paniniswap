@@ -33,6 +33,7 @@ export default function Perfil() {
   }, [])
 
   const guardar = async () => {
+    if (!user) return
     setGuardando(true)
     setMensaje('')
     const { error } = await supabase.from('profiles')
