@@ -1,26 +1,62 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
-import { MessageCircle, PhoneOff } from 'lucide-react'
+import { MessageCircle, PhoneOff, MapPin } from 'lucide-react'
+import { distancia } from '../../lib/distance'
 
 export default function Intercambios() {
   const [user, setUser] = useState(null)
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filtro, setFiltro] = useState('')
+  const [radio, setRadio] = useState(50)
+  const [miUbicacion, setMiUbicacion] = useState(null)
+  const [errorGeo, setErrorGeo] = useState(false)
+  const [perfilesData, setPerfilesData] = useState([])
   const router = useRouter()
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.push('/'); return }
       setUser(session.user)
+      const { data: perfil } = await supabase.from('profiles')
+        .select('latitud,longitud').eq('id', session.user.id).single()
+      if (perfil?.latitud && perfil?.longitud) {
+        setMiUbicacion({ lat: perfil.latitud, lng: perfil.longitud })
+      }
       await calcular(session.user.id)
       setLoading(false)
     })
   }, [])
+
+  const recalcularDistancias = (lat, lng) => {
+    setMatches(prev => prev.map(m => {
+      const p = perfilesData.find(x => x.id === m.userId)
+      let dist = null
+      if (p?.latitud && p?.longitud) {
+        dist = Math.round(distancia(lat, lng, p.latitud, p.longitud))
+      }
+      return { ...m, distancia: dist }
+    }))
+  }
+
+  const pedirUbicacion = () => {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords
+        setMiUbicacion({ lat: latitude, lng: longitude })
+        recalcularDistancias(latitude, longitude)
+        await supabase.from('profiles')
+          .update({ latitud: latitude, longitud: longitude })
+          .eq('id', user.id)
+        setErrorGeo(false)
+      },
+      () => setErrorGeo(true),
+      { timeout: 10000 }
+    )
+  }
 
   const calcular = async (uid) => {
     const [{ data: mis }, { data: todos }, { data: otros }] = await Promise.all([
@@ -53,26 +89,44 @@ export default function Intercambios() {
       ...candidatos.flatMap(c => c.doy.slice(0, 6))
     ])]
     const [{ data: perfiles }, { data: stkData }] = await Promise.all([
-      supabase.from('profiles').select('id,full_name,avatar_url,ciudad,telefono').in('id', userIds),
+      supabase.from('profiles').select('id,full_name,avatar_url,ciudad,telefono,latitud,longitud').in('id', userIds),
       supabase.from('stickers').select('id,jugador').in('id', stickerIds)
     ])
     const perfilMap = {}
-    if (perfiles) perfiles.forEach(p => { perfilMap[p.id] = p })
+    if (perfiles) { perfiles.forEach(p => { perfilMap[p.id] = p }); setPerfilesData(perfiles) }
     const stkMap = {}
     if (stkData) stkData.forEach(s => { stkMap[s.id] = s })
-    setMatches(candidatos.map(({ oId, dame, doy, score }) => {
+    const armarMatches = (cands) => cands.map(({ oId, dame, doy, score }) => {
       const p = perfilMap[oId] || {}
+      let dist = null
+      if (miUbicacion && p.latitud && p.longitud) {
+        dist = Math.round(distancia(miUbicacion.lat, miUbicacion.lng, p.latitud, p.longitud))
+      }
       return {
         userId: oId, nombre: p.full_name || 'Usuario', avatar: p.avatar_url,
-        ciudad: p.ciudad, telefono: p.telefono, score,
+        ciudad: p.ciudad, telefono: p.telefono, score, distancia: dist,
         dame: dame.slice(0, 6).map(id => stkMap[id]).filter(Boolean),
         doy: doy.slice(0, 6).map(id => stkMap[id]).filter(Boolean),
         totalDame: dame.length, totalDoy: doy.length,
       }
-    }))
+    })
+    setMatches(armarMatches(candidatos))
   }
 
-  const filtrados = matches.filter(m => !filtro || m.ciudad?.toLowerCase().includes(filtro.toLowerCase()))
+  const filtrados = useMemo(() => {
+    let lista = matches
+    if (miUbicacion) {
+      lista = lista.filter(m => m.distancia === null || m.distancia <= radio)
+      lista = [...lista].sort((a, b) => {
+        if (a.score !== b.score) return b.score - a.score
+        if (a.distancia !== null && b.distancia !== null) return a.distancia - b.distancia
+        if (a.distancia === null) return 1
+        if (b.distancia === null) return -1
+        return 0
+      })
+    }
+    return lista
+  }, [matches, radio, miUbicacion])
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -97,13 +151,40 @@ export default function Intercambios() {
           </p>
         </div>
 
-        {/* Filtro ciudad */}
-        <div style={{ position: 'relative', marginBottom: 16 }}>
-          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', fontSize: 14 }}>📍</span>
-          <input className="input-field" style={{ paddingLeft: 38 }}
-            placeholder="Filtrar por ciudad..."
-            value={filtro} onChange={e => setFiltro(e.target.value)} />
-        </div>
+        {/* Geolocalización / Radio */}
+        {miUbicacion ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <MapPin size={16} color="#0EA5E9" />
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', flex: 1 }}>
+                Mostrando matches a menos de <strong style={{ color: 'white' }}>{radio} km</strong>
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>{radio} km</span>
+            </div>
+            <input type="range" min={5} max={200} step={5} value={radio}
+              onChange={e => setRadio(Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#0EA5E9', height: 4, borderRadius: 2, cursor: 'pointer' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+              <span>5 km</span>
+              <span>200 km</span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 12, background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.15)' }}>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>
+              Activa tu ubicación para ver matches cerca de ti
+            </p>
+            <button onClick={pedirUbicacion} disabled={errorGeo}
+              style={{
+                padding: '10px 20px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', color: 'white',
+                fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8
+              }}>
+              <MapPin size={16} />
+              {errorGeo ? 'Permiso denegado - Configura desde tu navegador' : '📍 Detectar mi ubicación'}
+            </button>
+          </div>
+        )}
 
         {filtrados.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -143,7 +224,9 @@ export default function Intercambios() {
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nombre}</div>
-                    {m.ciudad && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>📍 {m.ciudad}</div>}
+                    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                      {m.distancia !== null ? `📍 ${m.distancia} km` : m.ciudad || 'Ubicación desconocida'}
+                    </div>
                   </div>
                   <div style={{
                     flexShrink: 0, padding: '8px 14px', borderRadius: 12, textAlign: 'center',
