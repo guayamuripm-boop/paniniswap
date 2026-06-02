@@ -15,6 +15,8 @@ export default function Intercambios() {
   const [miUbicacion, setMiUbicacion] = useState(null)
   const [errorGeo, setErrorGeo] = useState(false)
   const [perfilesData, setPerfilesData] = useState([])
+  const [perfilIncompleto, setPerfilIncompleto] = useState(null)
+  const [modoAsync, setModoAsync] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -22,9 +24,12 @@ export default function Intercambios() {
       if (!session) { router.push('/'); return }
       setUser(session.user)
       const { data: perfil } = await supabase.from('profiles')
-        .select('latitud,longitud').eq('id', session.user.id).single()
+        .select('latitud,longitud,telefono').eq('id', session.user.id).single()
       if (perfil?.latitud && perfil?.longitud) {
         setMiUbicacion({ lat: perfil.latitud, lng: perfil.longitud })
+      }
+      if (!perfil?.telefono || !perfil?.latitud) {
+        setPerfilIncompleto('Faltan datos de tu perfil')
       }
       await calcular(session.user.id)
       setLoading(false)
@@ -80,9 +85,13 @@ export default function Intercambios() {
       const dame = elRep.filter(id => faltan.includes(id))
       const doy = repito.filter(id => elFal.includes(id))
       const score = dame.length + doy.length
-      if (score > 0) candidatos.push({ oId, dame, doy, score })
+      if (score > 0) {
+        candidatos.push({ oId, dame, doy, score, esSimetrico: doy.length > 0 })
+      } else if (dame.length > 0) {
+        candidatos.push({ oId, dame, doy: [], score: dame.length, esSimetrico: false })
+      }
     }
-    candidatos.sort((a, b) => b.score - a.score)
+    candidatos.sort((a, b) => b.score - a.score || (a.esSimetrico === b.esSimetrico ? 0 : a.esSimetrico ? -1 : 1))
     const userIds = candidatos.map(c => c.oId)
     const stickerIds = [...new Set([
       ...candidatos.flatMap(c => c.dame.slice(0, 6)),
@@ -96,7 +105,7 @@ export default function Intercambios() {
     if (perfiles) { perfiles.forEach(p => { perfilMap[p.id] = p }); setPerfilesData(perfiles) }
     const stkMap = {}
     if (stkData) stkData.forEach(s => { stkMap[s.id] = s })
-    const armarMatches = (cands) => cands.map(({ oId, dame, doy, score }) => {
+    const armarMatches = (cands) => cands.map(({ oId, dame, doy, score, esSimetrico }) => {
       const p = perfilMap[oId] || {}
       let dist = null
       if (miUbicacion && p.latitud && p.longitud) {
@@ -104,7 +113,7 @@ export default function Intercambios() {
       }
       return {
         userId: oId, nombre: p.full_name || 'Usuario', avatar: p.avatar_url,
-        ciudad: p.ciudad, telefono: p.telefono, score, distancia: dist,
+        ciudad: p.ciudad, telefono: p.telefono, score, distancia: dist, esSimetrico,
         dame: dame.slice(0, 6).map(id => stkMap[id]).filter(Boolean),
         doy: doy.slice(0, 6).map(id => stkMap[id]).filter(Boolean),
         totalDame: dame.length, totalDoy: doy.length,
@@ -115,6 +124,9 @@ export default function Intercambios() {
 
   const filtrados = useMemo(() => {
     let lista = matches
+    if (!modoAsync) {
+      lista = lista.filter(m => m.esSimetrico)
+    }
     if (miUbicacion) {
       lista = lista.filter(m => m.distancia === null || m.distancia <= radio)
       lista = [...lista].sort((a, b) => {
@@ -126,7 +138,7 @@ export default function Intercambios() {
       })
     }
     return lista
-  }, [matches, radio, miUbicacion])
+  }, [matches, radio, miUbicacion, modoAsync])
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -186,6 +198,44 @@ export default function Intercambios() {
           </div>
         )}
 
+        {/* Perfil incompleto */}
+        {perfilIncompleto && (
+          <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 12, background: 'rgba(245,197,24,0.06)', border: '1px solid rgba(245,197,24,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#F5C518', marginBottom: 2 }}>Tu perfil está incompleto</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)' }}>Agrega tu teléfono para que puedan contactarte</div>
+              </div>
+              <button onClick={() => router.push('/perfil')}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#F5C518', color: '#000', fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap' }}>
+                Completar
+              </button>
+              <button onClick={() => setPerfilIncompleto(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 16, padding: 4 }}>
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Toggle asíncrono */}
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => setModoAsync(!modoAsync)}
+            style={{
+              padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+              background: modoAsync ? 'rgba(59,178,115,0.15)' : 'rgba(255,255,255,0.05)',
+              color: modoAsync ? '#3BB273' : 'var(--text2)',
+              border: `1px solid ${modoAsync ? 'rgba(59,178,115,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              display: 'flex', alignItems: 'center', gap: 6
+            }}>
+            {modoAsync ? '✓' : '○'} Modo asíncrono
+          </button>
+          <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+            {modoAsync ? 'Mostrando también usuarios que solo te pueden dar a ti' : 'Solo matches donde ambos intercambian'}
+          </span>
+        </div>
+
         {filtrados.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ marginBottom: 16, color: 'var(--text3)' }}>
@@ -193,8 +243,14 @@ export default function Intercambios() {
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
             </div>
-            <p style={{ fontFamily: 'Syne', fontSize: 18, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 }}>Sin matches aún</p>
-            <p style={{ color: 'var(--text3)', fontSize: 14, marginBottom: 24 }}>Marca más figuritas y agrega algunas como repetidas</p>
+            <p style={{ fontFamily: 'Syne', fontSize: 18, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 }}>
+              {modoAsync ? 'Sin resultados' : 'Sin matches aún'}
+            </p>
+            <p style={{ color: 'var(--text3)', fontSize: 14, marginBottom: 24 }}>
+              {modoAsync
+                ? 'Nadie en tu radio tiene figuritas que te falten. Intenta ampliar el radio o marca más figuritas.'
+                : 'Marca más figuritas como repetidas para encontrar matches. También puedes activar el modo asíncrono arriba.'}
+            </p>
             <button style={{
               padding: '12px 28px', borderRadius: 12, border: 'none', cursor: 'pointer',
               background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', color: 'white',
@@ -224,8 +280,15 @@ export default function Intercambios() {
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 15, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nombre}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-                      {m.distancia !== null ? `📍 ${m.distancia} km` : m.ciudad || 'Ubicación desconocida'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                        {m.distancia !== null ? `📍 ${m.distancia} km` : m.ciudad || 'Ubicación desconocida'}
+                      </div>
+                      {!m.esSimetrico && (
+                        <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, fontWeight: 700, background: 'rgba(59,178,115,0.1)', border: '1px solid rgba(59,178,115,0.2)', color: '#3BB273', textTransform: 'uppercase' }}>
+                          te da
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{
