@@ -25,9 +25,13 @@ export default function Chat() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.push('/'); return }
       setUser(session.user)
-      await cargarConversaciones(session.user.id)
-      if (userParam && userParam !== session.user.id) {
-        await abrirConversacion(userParam)
+      try {
+        await cargarConversaciones(session.user.id)
+        if (userParam && userParam !== session.user.id) {
+          await abrirConversacion(userParam)
+        }
+      } catch (e) {
+        console.error('Chat error:', e)
       }
       setLoading(false)
     })
@@ -69,26 +73,29 @@ export default function Chat() {
   }
 
   const cargarConversaciones = async (uid) => {
-    const { data: msgs } = await supabase
-      .from('messages')
-      .select('*')
-      .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
-      .order('created_at', { ascending: false })
-    if (!msgs) return
-    const vistos = new Set()
-    const convs = []
-    for (const m of msgs) {
-      const otroId = m.sender_id === uid ? m.receiver_id : m.sender_id
-      if (vistos.has(otroId)) continue
-      vistos.add(otroId)
-      const p = await cargarPerfil(otroId)
-      const { count } = await supabase
+    try {
+      const { data: msgs, error } = await supabase
         .from('messages')
-        .select('id', { count: 'exact' })
-        .eq('sender_id', otroId).eq('receiver_id', uid).eq('read', false)
-      convs.push({ usuarioId: otroId, ultimo: m, perfil: p, noLeidos: count || 0 })
-    }
-    setConversaciones(convs)
+        .select('*')
+        .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
+        .order('created_at', { ascending: false })
+      if (error) { console.error('Error loading messages:', error); return }
+      if (!msgs) return
+      const vistos = new Set()
+      const convs = []
+      for (const m of msgs) {
+        const otroId = m.sender_id === uid ? m.receiver_id : m.sender_id
+        if (vistos.has(otroId)) continue
+        vistos.add(otroId)
+        const p = await cargarPerfil(otroId)
+        const { count } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact' })
+          .eq('sender_id', otroId).eq('receiver_id', uid).eq('read', false)
+        convs.push({ usuarioId: otroId, ultimo: m, perfil: p, noLeidos: count || 0 })
+      }
+      setConversaciones(convs)
+    } catch (e) { console.error('Error in cargarConversaciones:', e) }
   }
 
   const abrirConversacion = async (otroId) => {

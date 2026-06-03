@@ -23,23 +23,31 @@ export default function Grupos() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.push('/'); return }
       setUser(session.user)
-      await cargar(session.user.id)
+      try {
+        await cargar(session.user.id)
+      } catch (e) {
+        console.error('Grupos error:', e)
+      }
       setLoading(false)
     })
   }, [])
 
   const cargar = async (uid) => {
-    const { data: mids } = await supabase
-      .from('group_members').select('group_id').eq('user_id', uid)
-    if (!mids || mids.length === 0) { setGrupos([]); return }
-    const ids = mids.map(m => m.group_id)
-    const { data: gs } = await supabase
-      .from('groups').select('*').in('id', ids).order('created_at', { ascending: false })
-    const { data: counts } = await supabase
-      .from('group_members').select('group_id').in('group_id', ids)
-    const countMap = {}
-    if (counts) counts.forEach(c => { countMap[c.group_id] = (countMap[c.group_id] || 0) + 1 })
-    setGrupos((gs || []).map(g => ({ ...g, miembros: countMap[g.id] || 1 })))
+    try {
+      const { data: mids, error: me } = await supabase
+        .from('group_members').select('group_id').eq('user_id', uid)
+      if (me) { console.error('Error loading members:', me); setGrupos([]); return }
+      if (!mids || mids.length === 0) { setGrupos([]); return }
+      const ids = mids.map(m => m.group_id)
+      const { data: gs, error: ge } = await supabase
+        .from('groups').select('*').in('id', ids).order('created_at', { ascending: false })
+      if (ge) { console.error('Error loading groups:', ge); setGrupos([]); return }
+      const { data: counts } = await supabase
+        .from('group_members').select('group_id').in('group_id', ids)
+      const countMap = {}
+      if (counts) counts.forEach(c => { countMap[c.group_id] = (countMap[c.group_id] || 0) + 1 })
+      setGrupos((gs || []).map(g => ({ ...g, miembros: countMap[g.id] || 1 })))
+    } catch (e) { console.error('Error in cargar:', e); setGrupos([]) }
   }
 
   const crear = async () => {
@@ -49,10 +57,12 @@ export default function Grupos() {
     const { error } = await supabase.from('groups').insert({
       name: nombre.trim(), description: desc.trim(), created_by: user.id, code
     })
-    if (error) { setMsg('Error al crear grupo'); return }
-    const { data: g } = await supabase.from('groups').select('id').eq('code', code).single()
+    if (error) { console.error('Error creating group:', error); setMsg('Error al crear grupo: ' + error.message); return }
+    const { data: g, error: se } = await supabase.from('groups').select('id').eq('code', code).single()
+    if (se) { console.error('Error finding group:', se); setMsg('Grupo creado pero no se pudo verificar'); return }
     if (g) {
-      await supabase.from('group_members').insert({ group_id: g.id, user_id: user.id, role: 'admin' })
+      const { error: me } = await supabase.from('group_members').insert({ group_id: g.id, user_id: user.id, role: 'admin' })
+      if (me) console.error('Error adding admin member:', me)
     }
     setNombre(''); setDesc(''); setCreando(false)
     await cargar(user.id)
