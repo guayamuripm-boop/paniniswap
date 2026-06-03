@@ -1,10 +1,10 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
-import { MessageSquare, Send, ArrowLeft, User as UserIcon, Phone, MapPin, Mail } from 'lucide-react'
+import { MessageSquare, Send, ArrowLeft, User as UserIcon, Phone, MapPin, Mail, Hash } from 'lucide-react'
 
 export default function Chat() {
   const [user, setUser] = useState(null)
@@ -15,9 +15,13 @@ export default function Chat() {
   const [loading, setLoading] = useState(true)
   const [perfiles, setPerfiles] = useState({})
   const [enviando, setEnviando] = useState(false)
+  const [stickers, setStickers] = useState([])
+  const [showStickers, setShowStickers] = useState(false)
+  const [stickFilter, setStickFilter] = useState('')
   const router = useRouter()
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+  const stickRef = useRef(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -58,19 +62,31 @@ export default function Chat() {
             if (prev.some(p => p.id === m.id)) return prev
             return [...prev, m].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
           })
-          await markAsRead(conversandoCon, user.id)
+          if (m.sender_id !== user.id) {
+            await markAsRead(conversandoCon, user.id)
+          }
         }
       }
     ).subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [user, conversandoCon])
 
-  const cargarPerfil = async (uid) => {
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (stickRef.current && !stickRef.current.contains(e.target)) {
+        setShowStickers(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const cargarPerfil = useCallback(async (uid) => {
     if (perfiles[uid]) return perfiles[uid]
     const { data } = await supabase.from('profiles').select('*').eq('id', uid).single()
     if (data) { setPerfiles(p => ({ ...p, [uid]: data })); return data }
     return null
-  }
+  }, [perfiles])
 
   const cargarConversaciones = async (uid) => {
     try {
@@ -98,9 +114,39 @@ export default function Chat() {
     } catch (e) { console.error('Error in cargarConversaciones:', e) }
   }
 
+  const cargarStickers = async (otroId) => {
+    const [{ data: mis }, { data: suyos }] = await Promise.all([
+      supabase.from('user_stickers').select('sticker_id,quantity').eq('user_id', user.id),
+      supabase.from('user_stickers').select('sticker_id,quantity').eq('user_id', otroId)
+    ])
+    const todosIds = [...new Set([
+      ...(mis || []).map(s => s.sticker_id),
+      ...(suyos || []).map(s => s.sticker_id)
+    ])]
+    if (todosIds.length === 0) return
+    const { data: stk } = await supabase.from('stickers').select('id,jugador').in('id', todosIds)
+    if (!stk) return
+    const misMap = {}
+    if (mis) mis.forEach(s => { misMap[s.sticker_id] = s.quantity })
+    const suyosMap = {}
+    if (suyos) suyos.forEach(s => { suyosMap[s.sticker_id] = s.quantity })
+    const result = stk.map(s => {
+      const tengo = misMap[s.id] || 0
+      const elTiene = suyosMap[s.id] || 0
+      const tags = []
+      if (tengo >= 2) tags.push('repito')
+      if (tengo >= 1) tags.push('tengo')
+      if (elTiene >= 2) tags.push('el-repite')
+      if (elTiene >= 1) tags.push('el-tiene')
+      if (tengo === 0) tags.push('falta')
+      return { ...s, tags }
+    })
+    setStickers(result)
+  }
+
   const abrirConversacion = async (otroId) => {
     setConversandoCon(otroId)
-    await cargarMensajes(otroId)
+    await Promise.all([cargarMensajes(otroId), cargarStickers(otroId)])
     await markAsRead(otroId, user.id)
     await cargarConversaciones(user.id)
     setTimeout(() => inputRef.current?.focus(), 300)
@@ -126,26 +172,51 @@ export default function Chat() {
     setEnviando(true)
     const content = texto.trim()
     setTexto('')
-    const { error } = await supabase.from('messages').insert({
+    await supabase.from('messages').insert({
       sender_id: user.id, receiver_id: conversandoCon, content
     })
-    if (!error) {
-      setMensajes(prev => [...prev, {
-        id: Math.random().toString(), sender_id: user.id, receiver_id: conversandoCon,
-        content, created_at: new Date().toISOString(), read: false
-      }])
-      await cargarConversaciones(user.id)
-    }
+    await cargarConversaciones(user.id)
     setEnviando(false)
   }
 
+  const handleChange = (e) => {
+    const val = e.target.value
+    setTexto(val)
+    const slashIdx = val.lastIndexOf('/')
+    if (slashIdx !== -1 && (slashIdx === 0 || val[slashIdx - 1] === ' ')) {
+      const after = val.slice(slashIdx + 1)
+      if (!after.includes(' ')) {
+        setStickFilter(after.toLowerCase())
+        setShowStickers(true)
+        return
+      }
+    }
+    setShowStickers(false)
+  }
+
+  const selectSticker = (sticker) => {
+    const slashIdx = texto.lastIndexOf('/')
+    const before = texto.slice(0, slashIdx)
+    const newText = before + sticker.jugador + ' '
+    setTexto(newText)
+    setShowStickers(false)
+    inputRef.current?.focus()
+  }
+
   const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (showStickers && filtered.length > 0) {
+        selectSticker(filtered[0])
+      } else {
+        enviar()
+      }
+    }
+    if (e.key === 'Escape') setShowStickers(false)
   }
 
   const volver = () => {
-    setConversandoCon(null)
-    setMensajes([])
+    setConversandoCon(null); setMensajes([]); setStickers([]); setShowStickers(false)
   }
 
   const formatTime = (t) => {
@@ -156,6 +227,10 @@ export default function Chat() {
     if (diff < 172800000) return 'Ayer'
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
   }
+
+  const filtered = showStickers ? stickers.filter(s =>
+    s.jugador.toLowerCase().includes(stickFilter)
+  ).slice(0, 10) : []
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -212,14 +287,45 @@ export default function Chat() {
             <div ref={bottomRef} />
           </div>
 
-          <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 8, background: 'var(--bg)' }}>
-            <input ref={inputRef} value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={handleKey}
-              placeholder="Escribe un mensaje..."
-              style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'white', fontSize: 14, outline: 'none' }} />
-            <button onClick={enviar} disabled={!texto.trim() || enviando}
-              style={{ width: 44, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', background: texto.trim() ? 'linear-gradient(135deg,#0EA5E9,#1D4ED8)' : 'rgba(255,255,255,0.06)', color: texto.trim() ? 'white' : 'var(--text3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Send size={18} />
-            </button>
+          <div style={{ position: 'relative', padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'var(--bg)' }}>
+            {showStickers && filtered.length > 0 && (
+              <div ref={stickRef} style={{
+                position: 'absolute', bottom: '100%', left: 16, right: 16,
+                background: '#0D1420', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12, padding: 6, maxHeight: 240, overflowY: 'auto',
+                boxShadow: '0 -8px 32px rgba(0,0,0,0.4)'
+              }}>
+                {filtered.map(s => (
+                  <button key={s.id} onClick={() => selectSticker(s)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                      borderRadius: 8, border: 'none', cursor: 'pointer', width: '100%',
+                      textAlign: 'left', fontSize: 13, fontWeight: 600,
+                      background: 'transparent', color: 'white',
+                    }}
+                    onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.06)'}
+                    onMouseLeave={e => e.target.style.background = 'transparent'}>
+                    <Hash size={14} color="var(--text3)" />
+                    <span style={{ flex: 1 }}>{s.jugador}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text3)', display: 'flex', gap: 4 }}>
+                      {s.tags.includes('repito') && <span style={{ color: '#3BB273' }}>Repito</span>}
+                      {s.tags.includes('tengo') && !s.tags.includes('repito') && <span style={{ color: '#0EA5E9' }}>Tengo</span>}
+                      {s.tags.includes('el-tiene') && <span style={{ color: '#F5C518' }}>{'→'} él</span>}
+                      {s.tags.includes('falta') && s.tags.includes('el-repite') && <span style={{ color: '#3BB273' }}>Le sobra</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input ref={inputRef} value={texto} onChange={handleChange} onKeyDown={handleKey}
+                placeholder='Escribe un mensaje... Escribe "/" para buscar una figurita'
+                style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'white', fontSize: 14, outline: 'none' }} />
+              <button onClick={enviar} disabled={!texto.trim() || enviando}
+                style={{ width: 44, height: 44, borderRadius: 12, border: 'none', cursor: 'pointer', background: texto.trim() ? 'linear-gradient(135deg,#0EA5E9,#1D4ED8)' : 'rgba(255,255,255,0.06)', color: texto.trim() ? 'white' : 'var(--text3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Send size={18} />
+              </button>
+            </div>
           </div>
         </div>
       ) : (
