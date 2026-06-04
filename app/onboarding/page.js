@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import { pedirPermiso } from '../../lib/notifications'
 
 export default function Onboarding() {
   const [user, setUser] = useState(null)
@@ -77,8 +78,10 @@ export default function Onboarding() {
       onboarding_completo: true,
     })
 
-    if (!error) router.push('/album')
-    else setGuardando(false)
+    if (!error) {
+      pedirPermiso()
+      router.push('/album')
+    } else setGuardando(false)
   }
 
   return (

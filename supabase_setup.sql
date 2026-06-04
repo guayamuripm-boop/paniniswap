@@ -81,5 +81,19 @@ DROP POLICY IF EXISTS "update_messages" ON messages;
 CREATE POLICY "update_messages" ON messages
   FOR UPDATE USING (auth.uid() = receiver_id);
 
--- 4. Habilitar Realtime para mensajes (chat en vivo)
+-- 4. NOTIFICACIONES PUSH
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  user_id UUID REFERENCES profiles(id) PRIMARY KEY,
+  subscription JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "manage_own_subscription" ON push_subscriptions;
+CREATE POLICY "manage_own_subscription" ON push_subscriptions
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 5. Habilitar Realtime para mensajes (chat en vivo)
 ALTER PUBLICATION supabase_realtime ADD TABLE messages;

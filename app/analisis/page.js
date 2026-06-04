@@ -85,8 +85,25 @@ export default function Analisis() {
   const diasHastaMundial = Math.max(0, Math.ceil((mundialInicia - new Date()) / (1000 * 60 * 60 * 24)))
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: 'var(--text2)', fontSize: 14 }}>Cargando análisis...</div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
+      <nav style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="skel" style={{ width: 120, height: 24 }} />
+        <div className="skel" style={{ width: 76, height: 38, borderRadius: 10 }} />
+      </nav>
+      <div style={{ maxWidth: 700, margin: '0 auto', padding: '16px' }}>
+        <div className="skel" style={{ width: 140, height: 26, marginBottom: 8 }} />
+        <div className="skel" style={{ width: 200, height: 14, marginBottom: 20 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skel" style={{ height: 88, borderRadius: 16 }} />
+          ))}
+        </div>
+        <div className="skel" style={{ height: 80, borderRadius: 16, marginBottom: 20 }} />
+        <div className="skel" style={{ width: 180, height: 18, marginBottom: 12 }} />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="skel" style={{ height: 52, borderRadius: 12, marginBottom: 8 }} />
+        ))}
+      </div>
     </div>
   )
 

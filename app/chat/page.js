@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
 import { MessageSquare, Send, ArrowLeft, User as UserIcon, Phone, MapPin, Mail, Hash } from 'lucide-react'
+import { notificarNuevoMensaje } from '../../lib/notifications'
 
 export default function Chat() {
   const [user, setUser] = useState(null)
@@ -64,6 +65,8 @@ export default function Chat() {
           })
           if (m.sender_id !== user.id) {
             await markAsRead(conversandoCon, user.id)
+            const p = perfiles[m.sender_id]
+            notificarNuevoMensaje(p?.full_name || 'Usuario', m.content)
           }
         }
       }
@@ -233,8 +236,26 @@ export default function Chat() {
   ).slice(0, 10) : []
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: 'var(--text2)', fontSize: 14 }}>Cargando mensajes...</div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
+      <nav style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="skel" style={{ width: 120, height: 24 }} />
+        <div className="skel" style={{ width: 76, height: 38, borderRadius: 10 }} />
+      </nav>
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
+        <div className="skel" style={{ width: 120, height: 26, marginBottom: 8 }} />
+        <div className="skel" style={{ width: 180, height: 14, marginBottom: 20 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px' }}>
+              <div className="skel skel-avatar" />
+              <div style={{ flex: 1 }}>
+                <div className="skel" style={{ width: '40%', height: 14, marginBottom: 6 }} />
+                <div className="skel" style={{ width: '65%', height: 12 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 

@@ -1,5 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 import { BookOpen, ArrowLeftRight, Users, User } from 'lucide-react'
 
 const ITEMS = [
@@ -11,6 +12,9 @@ const ITEMS = [
 
 export default function BottomNav({ active }) {
   const router = useRouter()
+  useEffect(() => {
+    ITEMS.forEach(item => router.prefetch(item.path))
+  }, [])
   return (
     <div style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,

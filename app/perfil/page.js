@@ -4,7 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
-import { User, MapPin, Phone, Save, Award, Star, Sparkles, Repeat2, Map, CheckCircle, Zap, Shield } from 'lucide-react'
+import { User, MapPin, Phone, Save, Award, Star, Sparkles, Repeat2, Map, CheckCircle, Zap, Shield, Bell, BellOff } from 'lucide-react'
+import { activarNotificaciones, desactivarNotificaciones } from '../../lib/notifications'
 
 export default function Perfil() {
   const [user, setUser] = useState(null)
@@ -14,6 +15,8 @@ export default function Perfil() {
   const [stats, setStats] = useState({ tengo: 0, repito: 0, mefaltan: 0 })
   const [insignias, setInsignias] = useState([])
   const [loading, setLoading] = useState(true)
+  const [notificacionesActivas, setNotificacionesActivas] = useState(false)
+  const [cambiandoNotif, setCambiandoNotif] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -44,6 +47,7 @@ export default function Perfil() {
         add('veterano', 'Veterano', '⚡', dias >= 30, `Llevas ${dias} días en MetaXport`)
       }
       setInsignias(badges)
+      setNotificacionesActivas(Notification.permission === 'granted')
       setLoading(false)
     })
   }, [])
@@ -61,8 +65,31 @@ export default function Perfil() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: 'var(--text2)', fontSize: 14 }}>Cargando perfil...</div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
+      <nav style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="skel" style={{ width: 120, height: 24 }} />
+        <div className="skel" style={{ width: 76, height: 38, borderRadius: 10 }} />
+      </nav>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '24px 16px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div className="skel" style={{ width: 80, height: 80, borderRadius: '50%', margin: '0 auto 12px' }} />
+          <div className="skel" style={{ width: '40%', height: 20, margin: '0 auto 8px' }} />
+          <div className="skel" style={{ width: '50%', height: 14, margin: '0 auto' }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 24 }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skel" style={{ height: 64, borderRadius: 14 }} />
+          ))}
+        </div>
+        <div className="skel" style={{ width: '40%', height: 18, marginBottom: 12 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', gap: 8, marginBottom: 24 }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="skel skel-badge" />
+          ))}
+        </div>
+        <div className="skel" style={{ width: '30%', height: 18, marginBottom: 20 }} />
+        <div className="skel" style={{ height: 250, borderRadius: 20 }} />
+      </div>
     </div>
   )
 
@@ -143,6 +170,44 @@ export default function Perfil() {
                 placeholder={placeholder} />
             </div>
           ))}
+
+          {/* Notificaciones */}
+          <div style={{ marginBottom: 20, padding: '16px', borderRadius: 14, background: notificacionesActivas ? 'rgba(59,178,115,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${notificacionesActivas ? 'rgba(59,178,115,0.15)' : 'rgba(255,255,255,0.06)'}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {notificacionesActivas ? <Bell size={18} color="#3BB273" /> : <BellOff size={18} color="var(--text3)" />}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: notificacionesActivas ? '#3BB273' : 'var(--text2)' }}>
+                    Notificaciones {notificacionesActivas ? 'activadas' : 'desactivadas'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                    {notificacionesActivas ? 'Recibirás alertas de nuevos mensajes y matches' : 'Activalas para no perderte ningún match'}
+                  </div>
+                </div>
+              </div>
+              <button onClick={async () => {
+                setCambiandoNotif(true)
+                if (notificacionesActivas) {
+                  await desactivarNotificaciones()
+                  setNotificacionesActivas(false)
+                } else {
+                  const r = await activarNotificaciones()
+                  setNotificacionesActivas(r === 'granted')
+                }
+                setCambiandoNotif(false)
+              }} disabled={cambiandoNotif}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap',
+                  background: notificacionesActivas ? 'rgba(232,54,61,0.1)' : 'rgba(14,165,233,0.15)',
+                  color: notificacionesActivas ? '#E8363D' : '#0EA5E9',
+                  border: `1px solid ${notificacionesActivas ? 'rgba(232,54,61,0.2)' : 'rgba(14,165,233,0.25)'}`,
+                  opacity: cambiandoNotif ? 0.6 : 1,
+                }}>
+                {cambiandoNotif ? '...' : notificacionesActivas ? 'Desactivar' : 'Activar'}
+              </button>
+            </div>
+          </div>
 
           {mensaje && (
             <div style={{

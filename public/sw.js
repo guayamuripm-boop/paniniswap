@@ -1,4 +1,4 @@
-const CACHE_NAME = 'metaxport-v1'
+const CACHE_NAME = 'metaxport-v2'
 const STATIC_ASSETS = [
   '/',
   '/album',
@@ -7,6 +7,8 @@ const STATIC_ASSETS = [
   '/chat',
   '/perfil',
   '/analisis',
+  '/onboarding',
+  '/check',
 ]
 
 self.addEventListener('install', (event) => {
@@ -24,14 +26,17 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       )
-    })
+    }).then(() => self.clients.claim())
   )
-  self.clients.claim()
 })
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
-  if (event.request.url.includes('supabase')) {
+  const url = new URL(event.request.url)
+  if (url.pathname.startsWith('/api/')) {
+    return event.respondWith(networkFirst(event.request))
+  }
+  if (url.hostname.includes('supabase')) {
     return event.respondWith(networkFirst(event.request))
   }
   event.respondWith(cacheFirst(event.request))
@@ -68,3 +73,45 @@ async function networkFirst(request) {
     })
   }
 }
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return
+  try {
+    const data = event.data.json()
+    const title = data.title || 'MetaXport'
+    const options = {
+      body: data.body || '',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [100, 50, 100],
+      data: data.url ? { url: data.url } : {},
+      ...data.options,
+    }
+    event.waitUntil(self.registration.showNotification(title, options))
+  } catch {
+    const text = event.data.text()
+    if (text) {
+      event.waitUntil(self.registration.showNotification('MetaXport', {
+        body: text,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+      }))
+    }
+  }
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = event.notification.data?.url || '/'
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.postMessage({ type: 'notification-click', url })
+          return client.focus()
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(url)
+    })
+  )
+})

@@ -88,8 +88,26 @@ export default function Grupos() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: 'var(--text2)', fontSize: 14 }}>Cargando grupos...</div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
+      <nav style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="skel" style={{ width: 120, height: 24 }} />
+        <div className="skel" style={{ width: 76, height: 38, borderRadius: 10 }} />
+      </nav>
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <div className="skel" style={{ width: 140, height: 26, marginBottom: 8 }} />
+            <div className="skel" style={{ width: 200, height: 14 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="skel" style={{ width: 86, height: 38, borderRadius: 10 }} />
+            <div className="skel" style={{ width: 80, height: 38, borderRadius: 10 }} />
+          </div>
+        </div>
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="skel" style={{ height: 120, borderRadius: 16, marginBottom: 12 }} />
+        ))}
+      </div>
     </div>
   )
 

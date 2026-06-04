@@ -1,10 +1,11 @@
 'use client'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
 import { Circle } from 'lucide-react'
+import { cacheFetch, cacheSet } from '../../lib/cache'
 
 const GRUPOS = {
   A:['MEX','RSA','KOR','CZE'], B:['CAN','BIH','QAT','SUI'],
@@ -58,6 +59,8 @@ function getGrupoDeSeccion(sec) {
   return null
 }
 
+const CACHE_KEY = 'metaxport_stickers'
+
 export default function Album() {
   const [user, setUser] = useState(null)
   const [stickers, setStickers] = useState([])
@@ -67,12 +70,16 @@ export default function Album() {
   const [busqueda, setBusqueda] = useState('')
   const [modoBusqueda, setModoBusqueda] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState(null)
+  const pendingRef = useRef(null)
   const router = useRouter()
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.push('/'); return }
       setUser(session.user)
+      const cached = cacheGet(CACHE_KEY)
+      if (cached) setStickers(cached)
       await asegurarPerfil(session.user)
       await cargar(session.user.id)
       setLoading(false)
@@ -88,32 +95,57 @@ export default function Album() {
 
   const cargar = async (uid) => {
     const [{ data: todos }, { data: mios }] = await Promise.all([
-      supabase.from('stickers').select('id,numero,jugador,seccion').order('numero'),
+      cacheFetch(CACHE_KEY, () =>
+        supabase.from('stickers').select('id,numero,jugador,seccion').order('numero')
+          .then(r => { cacheSet(CACHE_KEY, r.data || []); return r })
+          .then(r => r.data || []),
+        10 * 60 * 1000
+      ),
       supabase.from('user_stickers').select('id,sticker_id,quantity').eq('user_id', uid)
     ])
     const m = {}
     if (mios) mios.forEach(s => { m[s.sticker_id] = s })
-    setStickers(todos || [])
+    if (todos) setStickers(todos)
     setMis(m)
   }
 
-  const toggle = async (s) => {
+  const toggle = useCallback(async (s) => {
     const uid = user.id
     const act = mis[s.id]
+    const prev = mis
+
+    // Optimistic update
     if (!act) {
-      const { data } = await supabase.from('user_stickers')
-        .insert({ user_id: uid, sticker_id: s.id, quantity: 1, wanted: false })
-        .select().single()
-      setMis(p => ({ ...p, [s.id]: data }))
+      const mock = { id: '__optimistic__', sticker_id: s.id, quantity: 1 }
+      setMis(p => ({ ...p, [s.id]: mock }))
+      setToast('✅ Marcada como "Tengo"')
     } else if (act.quantity === 1) {
-      const { data } = await supabase.from('user_stickers')
-        .update({ quantity: 2 }).eq('id', act.id).select().single()
-      setMis(p => ({ ...p, [s.id]: data }))
+      setMis(p => ({ ...p, [s.id]: { ...p[s.id], quantity: 2 } }))
+      setToast('🔄 Marcada como repetida')
     } else {
-      await supabase.from('user_stickers').delete().eq('id', act.id)
       setMis(p => { const n = { ...p }; delete n[s.id]; return n })
+      setToast('✖️ Figurita desmarcada')
     }
-  }
+    setTimeout(() => setToast(null), 1500)
+
+    try {
+      if (!act) {
+        const { data } = await supabase.from('user_stickers')
+          .insert({ user_id: uid, sticker_id: s.id, quantity: 1, wanted: false })
+          .select().single()
+        if (data) setMis(p => ({ ...p, [s.id]: data }))
+      } else if (act.quantity === 1) {
+        const { data } = await supabase.from('user_stickers')
+          .update({ quantity: 2 }).eq('id', act.id).select().single()
+        if (data) setMis(p => ({ ...p, [s.id]: data }))
+      } else {
+        await supabase.from('user_stickers').delete().eq('id', act.id)
+      }
+    } catch {
+      setMis(prev)
+      setToast('❌ Error al guardar')
+    }
+  }, [user, mis])
 
   const seccionesBusqueda = useMemo(() => {
     if (!busqueda || busqueda.length < 2) return []
@@ -133,19 +165,46 @@ export default function Album() {
     return stickers.filter(s => seccionesBusqueda.includes(s.seccion))
   }, [modoBusqueda, seccionesBusqueda, stickers])
 
-  const filtradosGrupo = stickers.filter(s => s.seccion === secActiva)
+  const filtradosGrupo = useMemo(() => {
+    return stickers.filter(s => s.seccion === secActiva)
+  }, [stickers, secActiva])
+
   const mostrar = modoBusqueda ? filtradosBusqueda : filtradosGrupo
 
-  const tengo = Object.values(mis).filter(s => s.quantity >= 1).length
-  const repito = Object.values(mis).filter(s => s.quantity >= 2).length
+  const tengo = useMemo(() => Object.values(mis).filter(s => s.quantity >= 1).length, [mis])
+  const repito = useMemo(() => Object.values(mis).filter(s => s.quantity >= 2).length, [mis])
   const faltan = stickers.length - tengo
   const pct = stickers.length > 0 ? Math.round(tengo / stickers.length * 100) : 0
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Syne', fontSize: 28, fontWeight: 800, background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>MetaXport</div>
-        <div style={{ color: 'var(--text2)', fontSize: 13, marginTop: 8 }}>Cargando tu álbum...</div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
+      <nav style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="skel" style={{ width: 120, height: 24 }} />
+        <div className="skel" style={{ width: 76, height: 38, borderRadius: 10 }} />
+      </nav>
+      <div style={{ maxWidth: 700, margin: '0 auto', padding: '16px' }}>
+        <div className="skel" style={{ height: 90, borderRadius: 20, marginBottom: 16 }} />
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {Array.from({ length: 14 }).map((_, i) => (
+            <div key={i} className="skel" style={{ width: 68, height: 30, borderRadius: 50, flexShrink: 0 }} />
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skel" style={{ height: 68, borderRadius: 14 }} />
+          ))}
+        </div>
+        <div className="skel" style={{ width: 140, height: 16, marginBottom: 14 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: 8 }}>
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div key={i} className="skel" style={{ height: 56, borderRadius: 12 }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '8px 0', display: 'flex', justifyContent: 'space-around', background: 'var(--bg)' }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="skel" style={{ width: 40, height: 40, borderRadius: 8 }} />
+        ))}
       </div>
     </div>
   )
@@ -335,6 +394,8 @@ export default function Album() {
         </div>
 
       </div>
+
+      {toast && <div className="toast toast-success">{toast}</div>}
 
       {/* Bottom nav */}
       <BottomNav active="/album" />

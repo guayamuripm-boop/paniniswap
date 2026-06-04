@@ -1,11 +1,39 @@
 'use client'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
 import { MessageCircle, PhoneOff, MapPin } from 'lucide-react'
 import { distancia } from '../../lib/distance'
+import { cacheFetch, cacheGet, cacheSet } from '../../lib/cache'
+import { notificarNuevoMatch } from '../../lib/notifications'
+
+const STK_CACHE = 'metaxport_stickers'
+
+function SkeletonCard() {
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, overflow: 'hidden' }}>
+      <div style={{ padding: '16px 16px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="skel skel-avatar" />
+        <div style={{ flex: 1 }}>
+          <div className="skel" style={{ width: '50%', height: 16, marginBottom: 6 }} />
+          <div className="skel" style={{ width: '30%', height: 12 }} />
+        </div>
+        <div className="skel" style={{ width: 60, height: 52, borderRadius: 12 }} />
+      </div>
+      <div style={{ padding: '0 16px 12px' }}>
+        <div className="skel" style={{ height: 12, marginBottom: 8 }} />
+        <div style={{ display: 'flex', gap: 4 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skel" style={{ width: 60, height: 22, borderRadius: 6 }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ height: 48, background: 'rgba(255,255,255,0.02)' }} />
+    </div>
+  )
+}
 
 export default function Intercambios() {
   const [user, setUser] = useState(null)
@@ -17,26 +45,36 @@ export default function Intercambios() {
   const [perfilesData, setPerfilesData] = useState([])
   const [perfilIncompleto, setPerfilIncompleto] = useState(null)
   const [modoAsync, setModoAsync] = useState(false)
+  const [cargandoMatches, setCargandoMatches] = useState(false)
+  const cancelRef = useRef(false)
   const router = useRouter()
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.push('/'); return }
       setUser(session.user)
-      const { data: perfil } = await supabase.from('profiles')
-        .select('latitud,longitud,telefono').eq('id', session.user.id).single()
+      const [{ data: perfil }, { data: todos }] = await Promise.all([
+        supabase.from('profiles')
+          .select('latitud,longitud,telefono').eq('id', session.user.id).single(),
+        cacheFetch(STK_CACHE, () =>
+          supabase.from('stickers').select('id')
+            .then(r => { cacheSet(STK_CACHE, r.data || []); return r })
+            .then(r => r.data || []),
+          10 * 60 * 1000
+        )
+      ])
       if (perfil?.latitud && perfil?.longitud) {
         setMiUbicacion({ lat: perfil.latitud, lng: perfil.longitud })
       }
       if (!perfil?.telefono || !perfil?.latitud) {
         setPerfilIncompleto('Faltan datos de tu perfil')
       }
-      await calcular(session.user.id)
       setLoading(false)
+      calcular(session.user.id, todos)
     })
   }, [])
 
-  const recalcularDistancias = (lat, lng) => {
+  const recalcularDistancias = useCallback((lat, lng) => {
     setMatches(prev => prev.map(m => {
       const p = perfilesData.find(x => x.id === m.userId)
       let dist = null
@@ -45,7 +83,7 @@ export default function Intercambios() {
       }
       return { ...m, distancia: dist }
     }))
-  }
+  }, [perfilesData])
 
   const pedirUbicacion = () => {
     navigator.geolocation.getCurrentPosition(
@@ -63,22 +101,24 @@ export default function Intercambios() {
     )
   }
 
-  const calcular = async (uid) => {
-    const [{ data: mis }, { data: todos }, { data: otros }] = await Promise.all([
-      supabase.from('user_stickers').select('sticker_id,quantity').eq('user_id', uid),
-      supabase.from('stickers').select('id'),
-      supabase.from('user_stickers').select('user_id,sticker_id,quantity').neq('user_id', uid)
-    ])
-    if (!mis || mis.length === 0) return
+  const calcular = async (uid, todos) => {
+    setCargandoMatches(true)
+    cancelRef.current = false
+    const { data: mis } = await supabase.from('user_stickers')
+      .select('sticker_id,quantity').eq('user_id', uid)
+    if (!mis || mis.length === 0 || cancelRef.current) { setCargandoMatches(false); return }
     const tengo = mis.filter(s => s.quantity >= 1).map(s => s.sticker_id)
     const repito = mis.filter(s => s.quantity >= 2).map(s => s.sticker_id)
     const todosIds = (todos || []).map(s => s.id)
     const faltan = todosIds.filter(id => !tengo.includes(id))
-    if (!otros || otros.length === 0) return
+    const { data: otros } = await supabase.from('user_stickers')
+      .select('user_id,sticker_id,quantity').neq('user_id', uid)
+    if (!otros || otros.length === 0 || cancelRef.current) { setCargandoMatches(false); return }
     const porUser = {}
     otros.forEach(s => { if (!porUser[s.user_id]) porUser[s.user_id] = []; porUser[s.user_id].push(s) })
     const candidatos = []
     for (const [oId, sus] of Object.entries(porUser)) {
+      if (cancelRef.current) break
       const elTiene = sus.filter(s => s.quantity >= 1).map(s => s.sticker_id)
       const elRep = sus.filter(s => s.quantity >= 2).map(s => s.sticker_id)
       const elFal = todosIds.filter(id => !elTiene.includes(id))
@@ -91,6 +131,7 @@ export default function Intercambios() {
         candidatos.push({ oId, dame, doy: [], score: dame.length, esSimetrico: false })
       }
     }
+    if (cancelRef.current) { setCargandoMatches(false); return }
     candidatos.sort((a, b) => b.score - a.score || (a.esSimetrico === b.esSimetrico ? 0 : a.esSimetrico ? -1 : 1))
     const userIds = candidatos.map(c => c.oId)
     const stickerIds = [...new Set([
@@ -101,15 +142,17 @@ export default function Intercambios() {
       supabase.from('profiles').select('id,full_name,avatar_url,ciudad,telefono,latitud,longitud').in('id', userIds),
       supabase.from('stickers').select('id,jugador').in('id', stickerIds)
     ])
+    if (cancelRef.current) { setCargandoMatches(false); return }
     const perfilMap = {}
     if (perfiles) { perfiles.forEach(p => { perfilMap[p.id] = p }); setPerfilesData(perfiles) }
     const stkMap = {}
     if (stkData) stkData.forEach(s => { stkMap[s.id] = s })
+    const miLoc = miUbicacion
     const armarMatches = (cands) => cands.map(({ oId, dame, doy, score, esSimetrico }) => {
       const p = perfilMap[oId] || {}
       let dist = null
-      if (miUbicacion && p.latitud && p.longitud) {
-        dist = Math.round(distancia(miUbicacion.lat, miUbicacion.lng, p.latitud, p.longitud))
+      if (miLoc && p.latitud && p.longitud) {
+        dist = Math.round(distancia(miLoc.lat, miLoc.lng, p.latitud, p.longitud))
       }
       return {
         userId: oId, nombre: p.full_name || 'Usuario', avatar: p.avatar_url,
@@ -119,7 +162,13 @@ export default function Intercambios() {
         totalDame: dame.length, totalDoy: doy.length,
       }
     })
-    setMatches(armarMatches(candidatos))
+    const nuevos = armarMatches(candidatos)
+    setMatches(nuevos)
+    setCargandoMatches(false)
+    const top = nuevos[0]
+    if (top && top.score > 0 && top.nombre) {
+      notificarNuevoMatch(top.nombre, top.score)
+    }
   }
 
   const filtrados = useMemo(() => {
@@ -141,10 +190,17 @@ export default function Intercambios() {
   }, [matches, radio, miUbicacion, modoAsync])
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Syne', fontSize: 28, fontWeight: 800, background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>MetaXport</div>
-        <div style={{ color: 'var(--text2)', fontSize: 13, marginTop: 8 }}>Buscando matches...</div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
+      <nav style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="skel" style={{ width: 120, height: 24 }} />
+        <div className="skel" style={{ width: 76, height: 38, borderRadius: 10 }} />
+      </nav>
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
+        <div className="skel" style={{ width: 200, height: 26, marginBottom: 8 }} />
+        <div className="skel" style={{ width: 120, height: 14, marginBottom: 20 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       </div>
     </div>
   )
