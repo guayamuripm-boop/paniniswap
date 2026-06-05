@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
 import { Circle } from 'lucide-react'
-import { cacheFetch, cacheSet } from '../../lib/cache'
+import { cacheGet, cacheFetch, cacheSet } from '../../lib/cache'
 
 const GRUPOS = {
   A:['MEX','RSA','KOR','CZE'], B:['CAN','BIH','QAT','SUI'],
