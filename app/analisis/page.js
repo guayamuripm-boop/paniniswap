@@ -39,19 +39,27 @@ export default function Analisis() {
   const [stickers, setStickers] = useState([])
   const [mis, setMis] = useState({})
   const [loading, setLoading] = useState(true)
+  const [tasaDiaria, setTasaDiaria] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.push('/'); return }
-      const [{ data: todos }, { data: mios }] = await Promise.all([
+      const [{ data: todos }, { data: mios }, { data: perfil }] = await Promise.all([
         supabase.from('stickers').select('id,seccion'),
-        supabase.from('user_stickers').select('sticker_id,quantity').eq('user_id', session.user.id)
+        supabase.from('user_stickers').select('sticker_id,quantity,created_at').eq('user_id', session.user.id),
+        supabase.from('profiles').select('created_at').eq('id', session.user.id).single()
       ])
       const m = {}
       if (mios) mios.forEach(s => { m[s.sticker_id] = s })
       setStickers(todos || [])
       setMis(m)
+      if (perfil && mios && mios.length > 0) {
+        const joined = new Date(perfil.created_at)
+        const dias = Math.max(1, (Date.now() - joined) / 86400000)
+        const rate = mios.length / dias
+        setTasaDiaria(rate)
+      }
       setLoading(false)
     })
   }, [])
@@ -80,9 +88,11 @@ export default function Analisis() {
   const masCompletas = [...statsPorSeccion].sort((a, b) => b.pct - a.pct).slice(0, 5)
   const menosCompletas = [...statsPorSeccion].sort((a, b) => a.pct - b.pct).slice(0, 5)
 
-  const diasRestantes = faltan > 0 ? Math.ceil(faltan / 10) : 0
+  const diasRestantes = faltan > 0 ? Math.ceil(faltan / Math.max(tasaDiaria || 10, 1)) : 0
   const mundialInicia = new Date('2026-06-11')
   const diasHastaMundial = Math.max(0, Math.ceil((mundialInicia - new Date()) / (1000 * 60 * 60 * 24)))
+  const fechaEst = new Date(Date.now() + diasRestantes * 86400000)
+  const llegaATiempo = fechaEst < mundialInicia
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', paddingBottom: 80 }}>
@@ -147,10 +157,12 @@ export default function Analisis() {
           ) : (
             <>
               <p style={{ color: 'white', fontSize: 14, marginBottom: 4 }}>
-                A 10 figuritas/día, completarías en <strong style={{ color: '#F5C518' }}>{diasRestantes} días</strong>.
+                {tasaDiaria
+                  ? <>A tu ritmo ({tasaDiaria.toFixed(1)}/día), completarías en <strong style={{color:'#F5C518'}}>{diasRestantes} días</strong> ({fechaEst.toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' })}).</>
+                  : <>A 10 figuritas/día, completarías en <strong style={{color:'#F5C518'}}>{diasRestantes} días</strong>.</>}
               </p>
               <p style={{ color: 'var(--text3)', fontSize: 12 }}>
-                El Mundial inicia en <strong style={{ color: 'white' }}>{diasHastaMundial} días</strong>. {diasRestantes < diasHastaMundial ? '— Vas a tiempo.' : '— Acelera el ritmo.'}
+                El Mundial inicia en <strong style={{ color: 'white' }}>{diasHastaMundial} días</strong>. {llegaATiempo ? '— Vas bien.' : '— Acelera el ritmo.'}
               </p>
             </>
           )}

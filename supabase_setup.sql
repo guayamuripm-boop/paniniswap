@@ -1,7 +1,11 @@
 -- =============================================
--- MetaXport - Setup de Grupos y Chat
+-- MetaXport - Setup de Tablas y Políticas
 -- Ejecutar en: Supabase Dashboard > SQL Editor
 -- =============================================
+
+-- 0. Agregar campos de ubicación a profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS latitud DOUBLE PRECISION;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS longitud DOUBLE PRECISION;
 
 -- 1. GRUPOS DE INTERCAMBIO
 CREATE TABLE IF NOT EXISTS groups (
@@ -95,5 +99,28 @@ DROP POLICY IF EXISTS "manage_own_subscription" ON push_subscriptions;
 CREATE POLICY "manage_own_subscription" ON push_subscriptions
   FOR ALL USING (auth.uid() = user_id);
 
--- 5. Habilitar Realtime para mensajes (chat en vivo)
+-- 5. INTERCAMBIOS COMPLETADOS
+CREATE TABLE IF NOT EXISTS completed_exchanges (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user1_id UUID REFERENCES profiles(id) NOT NULL,
+  user2_id UUID REFERENCES profiles(id) NOT NULL,
+  user1_stickers TEXT[] DEFAULT '{}',
+  user2_stickers TEXT[] DEFAULT '{}',
+  completed_at TIMESTAMPTZ DEFAULT now(),
+  location_lat DOUBLE PRECISION,
+  location_lng DOUBLE PRECISION,
+  notes TEXT
+);
+
+ALTER TABLE completed_exchanges ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "view_exchanges" ON completed_exchanges;
+CREATE POLICY "view_exchanges" ON completed_exchanges
+  FOR SELECT USING (auth.uid() = user1_id OR auth.uid() = user2_id);
+
+DROP POLICY IF EXISTS "create_exchanges" ON completed_exchanges;
+CREATE POLICY "create_exchanges" ON completed_exchanges
+  FOR INSERT WITH CHECK (auth.uid() = user1_id OR auth.uid() = user2_id);
+
+-- 6. Habilitar Realtime para mensajes (chat en vivo)
 ALTER PUBLICATION supabase_realtime ADD TABLE messages;

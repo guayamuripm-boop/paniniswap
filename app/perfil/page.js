@@ -2,9 +2,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import BottomNav from '../../components/BottomNav'
 import Navbar from '../../components/Navbar'
-import { User, MapPin, Phone, Save, Award, Star, Sparkles, Repeat2, Map, CheckCircle, Zap, Shield, Bell, BellOff } from 'lucide-react'
+import { User, MapPin, Phone, Save, Award, Repeat2, Bell, BellOff, ArrowLeftRight } from 'lucide-react'
 import { activarNotificaciones, desactivarNotificaciones } from '../../lib/notifications'
 
 export default function Perfil() {
@@ -208,6 +209,22 @@ export default function Perfil() {
               </button>
             </div>
           </div>
+
+          <Link href="/historial" passHref legacyBehavior>
+            <a style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '14px 16px', borderRadius: 14, marginBottom: 20,
+              background: 'rgba(123,47,190,0.06)', border: '1px solid rgba(123,47,190,0.15)',
+              textDecoration: 'none', transition: 'all 0.2s',
+            }}>
+              <ArrowLeftRight size={18} color="#7B2FBE" />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: 'white' }}>Historial de intercambios</div>
+                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>Conversaciones con otros coleccionistas</div>
+              </div>
+              <span style={{ color: 'var(--text3)', fontSize: 18 }}>→</span>
+            </a>
+          </Link>
 
           {mensaje && (
             <div style={{

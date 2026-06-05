@@ -210,13 +210,18 @@ export default function Intercambios() {
       <Navbar />
 
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
-            Mis <span style={{ background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Intercambios</span>
-          </h1>
-          <p style={{ color: 'var(--text2)', fontSize: 13 }}>
-            {filtrados.length} match{filtrados.length !== 1 ? 'es' : ''} encontrado{filtrados.length !== 1 ? 's' : ''}
-          </p>
+        <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
+              Mis <span style={{ background: 'linear-gradient(135deg,#0EA5E9,#1D4ED8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Intercambios</span>
+            </h1>
+            <p style={{ color: 'var(--text2)', fontSize: 13 }}>
+              {filtrados.length} match{filtrados.length !== 1 ? 'es' : ''} encontrado{filtrados.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <button onClick={() => router.push('/mapa')} className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12, flexShrink: 0 }}>
+            <MapPin size={14} /> Mapa
+          </button>
         </div>
 
         {/* Geolocalización / Radio */}
