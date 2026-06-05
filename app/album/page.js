@@ -135,10 +135,12 @@ export default function Album() {
           .select().single()
         if (data) setMis(p => ({ ...p, [s.id]: data }))
       } else if (act.quantity === 1) {
+        if (act.id === '__optimistic__') return
         const { data } = await supabase.from('user_stickers')
           .update({ quantity: 2 }).eq('id', act.id).select().single()
         if (data) setMis(p => ({ ...p, [s.id]: data }))
       } else {
+        if (act.id === '__optimistic__') return
         await supabase.from('user_stickers').delete().eq('id', act.id)
       }
     } catch {
