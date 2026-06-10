@@ -22,7 +22,6 @@ export default function Mapa() {
   const [loading, setLoading] = useState(true)
   const [mapReady, setMapReady] = useState(false)
   const mapRef = useRef(null)
-  const markersRef = useRef([])
   const router = useRouter()
 
   useEffect(() => {
@@ -82,35 +81,33 @@ export default function Mapa() {
   }
 
   useEffect(() => {
-    if (coords && !mapReady && typeof window !== 'undefined') {
-      const L = require('leaflet')
-      const map = L.map(mapRef.current).setView(coords, 12)
+    if (!coords || mapReady || typeof window === 'undefined') return
+    let instance = null
+    import('leaflet').then(L => {
+      instance = L.map(mapRef.current).setView(coords, 12)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
         maxZoom: 18,
-      }).addTo(map)
+      }).addTo(instance)
       const myIcon = L.divIcon({
         html: '<div style="width:18px;height:18px;background:#0EA5E9;border:2px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>',
         className: '',
         iconSize: [18, 18],
       })
-      L.marker(coords, { icon: myIcon }).addTo(map).bindPopup('Tú')
-      const mks = []
+      L.marker(coords, { icon: myIcon }).addTo(instance).bindPopup('Tú')
       cercanos.forEach(c => {
         if (c.latitud && c.longitud) {
-          const mk = L.marker([c.latitud, c.longitud]).addTo(map)
+          L.marker([c.latitud, c.longitud]).addTo(instance)
             .bindPopup(`<b>${c.full_name}</b><br/>${c.tengo} stickers<br/>${Math.round(c.distancia)} km`)
-          mks.push(mk)
         }
       })
-      markersRef.current = mks
       if (cercanos.length > 0) {
-        const all = [[lat, lng], ...cercanos.filter(c => c.latitud && c.longitud).map(c => [c.latitud, c.longitud])]
-        map.fitBounds(all.map(c => [c[0], c[1]]), { padding: [40, 40] })
+        const all = [[coords[0], coords[1]], ...cercanos.filter(c => c.latitud && c.longitud).map(c => [c.latitud, c.longitud])]
+        instance.fitBounds(all, { padding: [40, 40] })
       }
       setMapReady(true)
-      return () => { map.remove() }
-    }
+    })
+    return () => { if (instance) instance.remove() }
   }, [coords, cercanos])
 
   return (

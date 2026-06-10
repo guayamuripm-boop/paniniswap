@@ -1,15 +1,15 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { BookOpen, ArrowLeftRight, Users, User, Bell, Trophy } from 'lucide-react'
+import { BookOpen, ArrowLeftRight, Users, User, Bell, Trophy, Calendar } from 'lucide-react'
 
 const ITEMS = [
-  { icon: BookOpen,       label: 'Álbum',   path: '/album' },
-  { icon: Bell,           label: 'Feed',    path: '/feed' },
+  { icon: BookOpen,       label: 'Álbum',    path: '/album' },
+  { icon: Bell,           label: 'Feed',     path: '/feed' },
   { icon: ArrowLeftRight, label: 'Swaps',   path: '/intercambios' },
+  { icon: Calendar,       label: 'Juegos',  path: '/calendario' },
   { icon: Trophy,         label: 'Ranking', path: '/ranking' },
-  { icon: Users,          label: 'Grupos',  path: '/grupos' },
-  { icon: User,           label: 'Perfil',  path: '/perfil' },
+  { icon: User,           label: 'Perfil',   path: '/perfil' },
 ]
 
 export default function BottomNav({ active }) {

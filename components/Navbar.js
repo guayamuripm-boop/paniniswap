@@ -68,11 +68,12 @@ export default function Navbar({ onSearch, showSearch = false, searchActive = fa
 
             {[
               { label: 'Mi Álbum',      path: '/album' },
-              { label: 'Intercambios',  path: '/intercambios' },
-              { label: 'Grupos',        path: '/grupos' },
-              { label: 'Mensajes',      path: '/chat' },
-              { label: 'Análisis',      path: '/analisis' },
-              { label: 'Mi Perfil',     path: '/perfil' },
+              { label: 'Calendario',   path: '/calendario' },
+              { label: 'Intercambios', path: '/intercambios' },
+              { label: 'Grupos',       path: '/grupos' },
+              { label: 'Mensajes',     path: '/chat' },
+              { label: 'Análisis',     path: '/analisis' },
+              { label: 'Mi Perfil',    path: '/perfil' },
             ].map(item => (
               <button key={item.path}
                 onClick={() => { router.push(item.path); setMenuOpen(false) }}
